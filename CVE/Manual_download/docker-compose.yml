@@ -1,6 +1,16 @@
 name: "manual-downloader"
 
 services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+    networks:
+      - redis-mini-storage-network
   app:
     build: .
     ports:
@@ -14,9 +24,9 @@ services:
   mongo-express:
     image: mongo-express
     ports:
-      - "8081:8081"
+      - "8084:8081"
     environment:
-      ME_CONFIG_MONGODB_URL: mongodb://host.docker.internal:27017/
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
       ME_CONFIG_BASICAUTH_USERNAME: "admin"
       ME_CONFIG_BASICAUTH_PASSWORD: "123"
     restart: unless-stopped
@@ -26,3 +36,6 @@ services:
 networks:
   redis-mini-storage-network:
     external: true
+  
+volumes:
+  mongodb_data:
