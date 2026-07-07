@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Config Manager</title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+
+    <style>
+        body {
+            background: #f0f2f5;
+            padding: 20px 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .container { max-width: 1200px; }
+
+        .card {
+            border-radius: 12px;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+            border: none;
+            margin-bottom: 20px;
+            transition: transform 0.2s;
+        }
+
+        .card:hover { transform: translateY(-2px); }
+
+        .card-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 12px 12px 0 0 !important;
+            padding: 15px 20px;
+        }
+
+        .card-header h5 { margin: 0; font-weight: 600; }
+
+        .config-value {
+            background: #f8f9fa;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+            border-left: 3px solid #667eea;
+        }
+
+        .config-label {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .btn-gradient {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            transition: all 0.3s;
+        }
+
+        .btn-gradient:hover {
+            color: white;
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+
+        .btn-gradient:disabled {
+            opacity: 0.6;
+            transform: none;
+        }
+
+        .status-success { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .status-info { background: #d1ecf1; color: #0c5460; }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .redis-status {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .redis-status.online { background: #28a745; }
+        .redis-status.offline { background: #dc3545; }
+
+        /* HTMX индикатор */
+        .htmx-indicator {
+            display: none;
+        }
+        .htmx-request .htmx-indicator {
+            display: inline-block;
+        }
+        .htmx-request .btn-text {
+            display: none;
+        }
+
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+
+        .form-label {
+            font-weight: 500;
+            font-size: 14px;
+            color: #495057;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6c757d;
+        }
+        .empty-state i { font-size: 3rem; margin-bottom: 15px; color: #dee2e6; }
+
+        /* Анимация загрузки для кнопок */
+        .spinner-sm {
+            display: none;
+            width: 1rem;
+            height: 1rem;
+            border: 0.15em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border 0.75s linear infinite;
+        }
+
+        .loading .spinner-sm {
+            display: inline-block;
+        }
+
+        .loading .btn-icon {
+            display: none;
+        }
+
+        @keyframes spinner-border {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- ===== ЗАГОЛОВОК ===== -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-cog me-2"></i>
+                            <h2 class="d-inline-block mb-0">Config Manager</h2>
+                        </div>
+                        <div>
+                            <span class="badge bg-light text-dark">
+                                <span class="redis-status online"></span>
+                                Redis: {{ redis_host }}:{{ redis_port }}
+                            </span>
+                            <span class="badge bg-light text-dark ms-1">
+                                <code>{{ redis_key }}</code>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0 text-muted">
+                            <i class="fas fa-database me-2"></i>
+                            Управление настройками в <strong>Redis</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== ОСНОВНОЙ КОНТЕНТ ===== -->
+        <div class="row">
+            <!-- ЛЕВАЯ КОЛОНКА: Отображение настроек -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-eye me-2"></i> Текущие настройки</h5>
+                        <button class="btn btn-sm btn-outline-light"
+                                hx-get="/partial/config-display"
+                                hx-target="#configDisplay"
+                                hx-swap="innerHTML"
+                                hx-indicator="#refreshIndicator">
+                            <i class="fas fa-sync"></i>
+                            <span class="spinner-sm spinner-border-sm ms-1" id="refreshIndicator"></span>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="configDisplay">
+                            <!-- ===== ВСЁ ВНУТРИ ОДНОГО ФАЙЛА ===== -->
+                            {% if success %}
+                            <div class="alert alert-success alert-dismissible fade show mb-3" role="alert">
+                                <i class="fas fa-check-circle me-2"></i> Настройки сохранены!
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endif %}
+
+                            {% if config and config|length > 0 %}
+                                <div class="mb-3">
+                                    <div class="config-label"><i class="fas fa-database me-1"></i> MongoDB URL</div>
+                                    <div class="config-value">{{ config.mongodb_url or '—' }}</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="config-label"><i class="fas fa-cloud me-1"></i> CVE URL</div>
+                                    <div class="config-value text-primary">{{ config.update_url_cve or '—' }}</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="config-label"><i class="fas fa-cloud me-1"></i> BDU URL</div>
+                                    <div class="config-value text-info">{{ config.update_url_bdu or '—' }}</div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <div class="config-label"><i class="fas fa-file-archive me-1"></i> Файл CVE</div>
+                                            <div class="config-value">{{ config.filename_cve or '—' }}</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="mb-2">
+                                            <div class="config-label"><i class="fas fa-file-code me-1"></i> Файл BDU</div>
+                                            <div class="config-value">{{ config.filename_bdu or '—' }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-0">
+                                    <div class="config-label"><i class="fas fa-tag me-1"></i> База данных</div>
+                                    <div class="config-value fw-bold">{{ config.name_base or '—' }}</div>
+                                </div>
+
+                                <!-- RAW JSON -->
+                                <hr>
+                                <div class="mt-2">
+                                    <small class="text-muted">RAW JSON:</small>
+                                    <pre style="background: #1e1e1e; color: #d4d4d4; padding: 10px; border-radius: 6px; font-size: 11px; max-height: 100px; overflow: auto; margin: 5px 0 0 0;">
+{{ config|tojson(indent=2) }}
+                                    </pre>
+                                </div>
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="fas fa-database"></i>
+                                    <h5>Нет данных</h5>
+                                    <p class="text-muted">Настройки не найдены в Redis</p>
+                                    <button class="btn btn-sm btn-gradient"
+                                            hx-post="/partial/reset-default"
+                                            hx-target="#configDisplay"
+                                            hx-swap="innerHTML">
+                                        <i class="fas fa-undo me-1"></i> Создать по умолчанию
+                                    </button>
+                                </div>
+                            {% endif %}
+                            <!-- ===== КОНЕЦ ВСТАВКИ ===== -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ПРАВАЯ КОЛОНКА: Форма редактирования -->
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-edit me-2"></i> Редактировать</h5>
+                    </div>
+                    <div class="card-body">
+                        <form hx-post="/partial/save-config"
+                              hx-target="#configDisplay"
+                              hx-swap="innerHTML"
+                              hx-indicator="#saveIndicator">
+
+                            <div class="mb-3">
+                                <label class="form-label">MongoDB URL</label>
+                                <input type="text" class="form-control" name="mongodb_url"
+                                       value="{{ config.mongodb_url or '' }}"
+                                       placeholder="mongodb://mongodb:27017/">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">CVE URL</label>
+                                <input type="url" class="form-control" name="update_url_cve"
+                                       value="{{ config.update_url_cve or '' }}"
+                                       placeholder="https://example.com/CVE.zip">
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">BDU URL</label>
+                                <input type="url" class="form-control" name="update_url_bdu"
+                                       value="{{ config.update_url_bdu or '' }}"
+                                       placeholder="https://example.com/BDU.xml">
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Имя файла CVE</label>
+                                        <input type="text" class="form-control" name="filename_cve"
+                                               value="{{ config.filename_cve or '' }}"
+                                               placeholder="CVE_start.zip">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label">Имя файла BDU</label>
+                                        <input type="text" class="form-control" name="filename_bdu"
+                                               value="{{ config.filename_bdu or '' }}"
+                                               placeholder="bdu_test_12.xml">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label class="form-label">Имя базы данных</label>
+                                <input type="text" class="form-control" name="name_base"
+                                       value="{{ config.name_base or '' }}"
+                                       placeholder="bd">
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-gradient flex-grow-1" id="saveBtn">
+                                    <span class="btn-icon"><i class="fas fa-save me-2"></i>Сохранить</span>
+                                    <span class="spinner-sm"></span>
+                                    <span id="saveIndicator" class="htmx-indicator">Сохранение...</span>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        hx-get="/partial/config-display"
+                                        hx-target="#configDisplay"
+                                        hx-swap="innerHTML"
+                                        title="Сбросить форму">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== КНОПКИ УПРАВЛЕНИЯ ===== -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-tools me-2"></i> Управление</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex gap-2 flex-wrap">
+                            <!-- Сброс по умолчанию -->
+                            <button class="btn btn-warning"
+                                    hx-post="/partial/reset-default"
+                                    hx-target="#configDisplay"
+                                    hx-swap="innerHTML"
+                                    hx-confirm="Сбросить все настройки к значениям по умолчанию?"
+                                    hx-indicator="#resetIndicator">
+                                <span class="btn-icon"><i class="fas fa-undo me-2"></i>Сбросить по умолчанию</span>
+                                <span class="spinner-sm"></span>
+                                <span id="resetIndicator" class="htmx-indicator">Сброс...</span>
+                            </button>
+
+                            <!-- Удалить всё -->
+                            <button class="btn btn-danger"
+                                    hx-delete="/partial/delete-key/all"
+                                    hx-target="#configDisplay"
+                                    hx-swap="innerHTML"
+                                    hx-confirm="Удалить все настройки из Redis?"
+                                    hx-indicator="#deleteIndicator">
+                                <span class="btn-icon"><i class="fas fa-trash me-2"></i>Очистить всё</span>
+                                <span class="spinner-sm"></span>
+                                <span id="deleteIndicator" class="htmx-indicator">Удаление...</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== СТАТУС ===== -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-info-circle me-2"></i> Статус</h5>
+                    </div>
+                    <div class="card-body" id="statusContainer">
+                        <div class="alert alert-info mb-0">
+                            <i class="fas fa-info-circle me-2"></i> Готов к работе
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- HTMX расширения для событий -->
+    <script>
+        document.addEventListener('htmx:afterRequest', function(evt) {
+            const status = evt.detail.xhr.getResponseHeader('X-Status');
+            if (status) {
+                const container = document.getElementById('statusContainer');
+                const alertClass = status.includes('✅') ? 'alert-success' : 'alert-info';
+                container.innerHTML = `
+                    <div class="alert ${alertClass} mb-0 fade-in">
+                        <i class="fas fa-${status.includes('✅') ? 'check-circle' : 'info-circle'} me-2"></i>
+                        ${status}
+                    </div>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>
