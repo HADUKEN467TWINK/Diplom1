@@ -33,7 +33,7 @@ end
 # Unset irrelevant variables.
 deactivate nondestructive
 
-set -gx VIRTUAL_ENV /home/okumush@dmn.zbr/git_repo/Diplom1/CVE/Viewer_cve/venv
+set -gx VIRTUAL_ENV /home/okumush@dmn.zbr/git_repo/Rfac_diplom/CVE/Front/Viewer_cve/venv
 
 set -gx _OLD_VIRTUAL_PATH $PATH
 set -gx PATH "$VIRTUAL_ENV/"bin $PATH

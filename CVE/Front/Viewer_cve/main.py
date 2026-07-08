@@ -1,78 +1,18 @@
 import os
+import json
 import redis.asyncio as redis
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi import FastAPI, Request, HTTPException, Query
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
+from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import uvicorn
+from datetime import datetime
+import asyncio
 
-# ==================== КОНФИГ ====================
-REDIS_HOST = os.getenv("REDIS_HOST", "my-redis")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_KEY = "my_config"
-
-
-# ==================== PYDANTIC МОДЕЛИ ====================
-class ConfigUpdate(BaseModel):
-    mongodb_url: Optional[str] = None
-    filename_cve: Optional[str] = None
-    filename_bdu: Optional[str] = None
-    update_url_cve: Optional[str] = None
-    update_url_bdu: Optional[str] = None
-    name_base: Optional[str] = None
-
-
-# ==================== REDIS ФУНКЦИИ ====================
-async def get_redis():
-    return redis.Redis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        decode_responses=True
-    )
-
-
-async def get_config() -> dict:
-    r = await get_redis()
-    config = await r.hgetall(REDIS_KEY)
-    await r.close()
-
-    if not config:
-        default_config = {
-            "mongodb_url": "mongodb://mongodb:27017/",
-            "filename_cve": "CVE_start.zip",
-            "filename_bdu": "bdu_test_12.xml",
-            "update_url_cve": "https://gitea.com/HADUKEN/TEST_CVE/raw/branch/main/CVE_main1.zip",
-            "update_url_bdu": "https://github.com/HADUKEN467/TEST_CVE_BDU/raw/master/bdu_test_500.xml",
-            "name_base": "bd"
-        }
-        r = await get_redis()
-        await r.hset(REDIS_KEY, mapping=default_config)
-        await r.close()
-        return default_config
-
-    return config
-
-
-async def update_config(data: dict) -> dict:
-    r = await get_redis()
-    for key, value in data.items():
-        if value is not None:
-            await r.hset(REDIS_KEY, key, value)
-    updated = await r.hgetall(REDIS_KEY)
-    await r.close()
-    return updated
-
-
-async def delete_config_key(key: str):
-    r = await get_redis()
-    await r.hdel(REDIS_KEY, key)
-    await r.close()
-
-
-# ==================== FASTAPI APP ====================
-app = FastAPI(title="Config Manager")
+app = FastAPI(title="Viewer_CVE")
 
 # CORS
 app.add_middleware(
@@ -83,131 +23,713 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Jinja2
-templates = Jinja2Templates(directory="templates")
+# Глобальные переменные для MongoDB
+mongo_client = AsyncIOMotorClient("mongodb://localhost:27017")
+db = mongo_client.bd
 
-
-# ==================== API РОУТЫ (JSON) ====================
-@app.get("/api/config")
-async def api_get_config():
-    return await get_config()
-
-
-@app.put("/api/config")
-async def api_update_config(config_update: ConfigUpdate):
-    update_data = {k: v for k, v in config_update.dict().items() if v is not None}
-    if not update_data:
-        raise HTTPException(400, "No data to update")
-    return await update_config(update_data)
-
-
-@app.delete("/api/config/{key}")
-async def api_delete_key(key: str):
-    valid_keys = ["mongodb_url", "filename_cve", "filename_bdu",
-                  "update_url_cve", "update_url_bdu", "name_base"]
-    if key not in valid_keys:
-        raise HTTPException(400, f"Invalid key: {key}")
-    await delete_config_key(key)
-    return {"message": f"Key '{key}' deleted"}
-
-
-@app.get("/api/health")
-async def health_check():
-    try:
-        config = await get_config()
-        return {"status": "ok", "redis_connected": bool(config)}
-    except Exception as e:
-        return {"status": "error", "error": str(e)}
-
-
-# ==================== HTML СТРАНИЦЫ (Jinja2 + HTMX) ====================
 @app.get("/", response_class=HTMLResponse)
-async def home(request: Request):
-    config = await get_config()
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "config": config,
-        "redis_host": REDIS_HOST,
-        "redis_port": REDIS_PORT,
-        "redis_key": REDIS_KEY
-    })
+async def home():
+    return """
+        <!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Просмотр CVE</title>
+    <!-- Font Awesome (иконки) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #f4f7fb;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+            padding: 30px 20px;
+            color: #1e293b;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
 
+        /* шапка */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            background: white;
+            padding: 20px 28px;
+            border-radius: 24px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+            border: 1px solid #e9edf2;
+        }
+        .header h1 {
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 i {
+            color: #2563eb;
+            font-size: 28px;
+        }
+        .badge {
+            background: #eef2ff;
+            color: #2563eb;
+            font-size: 14px;
+            font-weight: 500;
+            padding: 4px 14px;
+            border-radius: 40px;
+            margin-left: 8px;
+        }
+        .config-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f8fafc;
+            padding: 6px 16px 6px 12px;
+            border-radius: 40px;
+            font-size: 14px;
+            border: 1px solid #e2e8f0;
+        }
+        .config-status .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot.green { background: #22c55e; }
+        .dot.red { background: #ef4444; }
 
-# HTMX эндпоинты (возвращают ТОЛЬКО HTML-кусочки)
+        /* панель фильтров */
+        .filter-panel {
+            background: white;
+            border-radius: 20px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            border: 1px solid #e9edf2;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px 24px;
+        }
+        .filter-panel .field {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1 1 220px;
+        }
+        .filter-panel .field i {
+            color: #64748b;
+            width: 20px;
+            font-size: 16px;
+        }
+        .filter-panel input, 
+        .filter-panel select {
+            padding: 10px 14px;
+            border: 1px solid #d1d9e6;
+            border-radius: 40px;
+            font-size: 14px;
+            background: white;
+            width: 100%;
+            transition: 0.15s;
+            outline: none;
+        }
+        .filter-panel input:focus,
+        .filter-panel select:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+        }
+        .filter-panel .actions {
+            display: flex;
+            gap: 10px;
+            margin-left: auto;
+        }
+        .btn {
+            background: white;
+            border: 1px solid #d1d9e6;
+            padding: 10px 22px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: 0.15s;
+            color: #1e293b;
+        }
+        .btn-primary {
+            background: #2563eb;
+            border: 1px solid #2563eb;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+        }
+        .btn-outline {
+            background: transparent;
+        }
+        .btn-outline:hover {
+            background: #f1f5f9;
+        }
+        .btn i { font-size: 14px; }
 
-@app.get("/partial/config-display", response_class=HTMLResponse)
-async def partial_config_display(request: Request):
-    """Возвращает только блок с отображением настроек"""
-    config = await get_config()
-    return templates.TemplateResponse("partials/config_display.html", {
-        "request": request,
-        "config": config
-    })
+        /* таблица */
+        .table-wrapper {
+            background: white;
+            border-radius: 24px;
+            border: 1px solid #e9edf2;
+            overflow-x: auto;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.02);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            min-width: 700px;
+        }
+        thead {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        th {
+            text-align: left;
+            padding: 16px 18px;
+            font-weight: 600;
+            color: #475569;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        td {
+            padding: 14px 18px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: middle;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+        tr:hover td {
+            background: #fafcff;
+        }
+        .cve-id {
+            font-weight: 600;
+            color: #1e293b;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: #f1f4f9;
+            padding: 2px 12px;
+            border-radius: 40px;
+            display: inline-block;
+        }
+        .severity-badge {
+            display: inline-block;
+            padding: 2px 14px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 12px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+            background: #e2e8f0;
+            color: #334155;
+        }
+        .severity-critical { background: #fecaca; color: #b91c1c; }
+        .severity-high    { background: #fdba74; color: #9a3412; }
+        .severity-medium  { background: #fde047; color: #854d0e; }
+        .severity-low     { background: #bbf7d0; color: #166534; }
+        .severity-none    { background: #e2e8f0; color: #475569; }
 
+        .desc-preview {
+            max-width: 280px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            color: #334155;
+        }
+        .status-badge {
+            font-size: 12px;
+            background: #eef2ff;
+            padding: 2px 12px;
+            border-radius: 40px;
+            color: #2563eb;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #94a3b8;
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            padding: 20px 0 10px;
+            font-size: 14px;
+            color: #475569;
+        }
+        .pagination button {
+            background: white;
+            border: 1px solid #d1d9e6;
+            padding: 6px 18px;
+            border-radius: 40px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.1s;
+        }
+        .pagination button:hover:not(:disabled) {
+            background: #f1f5f9;
+        }
+        .pagination button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .spinner {
+            text-align: center;
+            padding: 40px 0;
+            color: #2563eb;
+        }
+        .footer-meta {
+            margin-top: 16px;
+            text-align: right;
+            font-size: 13px;
+            color: #94a3b8;
+            padding-right: 8px;
+        }
 
-@app.post("/partial/save-config", response_class=HTMLResponse)
-async def partial_save_config(request: Request):
-    """Сохраняет настройки и возвращает обновленный блок"""
-    form_data = await request.form()
+        @media (max-width: 700px) {
+            .header { flex-direction: column; align-items: start; gap: 12px; }
+            .filter-panel .actions { margin-left: 0; width: 100%; }
+            .filter-panel .actions .btn { flex: 1; justify-content: center; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- Шапка -->
+    <div class="header">
+        <h1>
+            <i class="fas fa-shield-alt"></i> CVE Explorer
+            <span class="badge">v1</span>
+        </h1>
+        <div class="config-status">
+            <span class="dot green" id="statusDot"></span>
+            <span id="configStatusText">Подключено</span>
+            <i class="fas fa-database" style="margin-left: 6px; color: #64748b;"></i>
+            <span id="dbName" style="font-weight: 500;">—</span>
+        </div>
+    </div>
 
-    update_data = {
-        "mongodb_url": form_data.get("mongodb_url"),
-        "filename_cve": form_data.get("filename_cve"),
-        "filename_bdu": form_data.get("filename_bdu"),
-        "update_url_cve": form_data.get("update_url_cve"),
-        "update_url_bdu": form_data.get("update_url_bdu"),
-        "name_base": form_data.get("name_base")
+    <!-- Фильтры -->
+    <div class="filter-panel">
+        <div class="field">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" placeholder="CVE ID или описание..." value="">
+        </div>
+        <div class="field">
+            <i class="fas fa-tag"></i>
+            <select id="severityFilter">
+                <option value="">Все уровни</option>
+                <option value="CRITICAL">Критический</option>
+                <option value="HIGH">Высокий</option>
+                <option value="MEDIUM">Средний</option>
+                <option value="LOW">Низкий</option>
+                <option value="NONE">Нет</option>
+            </select>
+        </div>
+        <div class="actions">
+            <button class="btn btn-primary" id="applyFilterBtn"><i class="fas fa-filter"></i> Применить</button>
+            <button class="btn btn-outline" id="resetFilterBtn"><i class="fas fa-undo-alt"></i> Сброс</button>
+        </div>
+    </div>
+
+    <!-- Таблица -->
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>CVE ID</th>
+                    <th>Описание</th>
+                    <th>Уровень</th>
+                    <th>Дата публикации</th>
+                    <th>Статус</th>
+                </tr>
+            </thead>
+            <tbody id="cveTableBody">
+                <tr><td colspan="5" class="empty-state">
+                    <i class="fas fa-cloud-download-alt"></i>
+                    <div>Загрузка данных...</div>
+                </td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Пагинация -->
+    <div class="pagination">
+        <button id="prevPageBtn" disabled><i class="fas fa-chevron-left"></i> Назад</button>
+        <span id="pageInfo">Страница 1</span>
+        <button id="nextPageBtn">Вперед <i class="fas fa-chevron-right"></i></button>
+    </div>
+    <div class="footer-meta" id="totalCountInfo">Всего записей: —</div>
+</div>
+
+<script>
+    // ---------- Конфигурация ----------
+    const API_BASE = window.location.origin;
+
+    // Состояние
+    let currentPage = 1;
+    const pageSize = 20;
+    let totalRecords = 0;
+    let currentFilter = {
+        search: '',
+        severity: ''
+    };
+
+    // DOM ссылки
+    const tbody = document.getElementById('cveTableBody');
+    const searchInput = document.getElementById('searchInput');
+    const severityFilter = document.getElementById('severityFilter');
+    const applyBtn = document.getElementById('applyFilterBtn');
+    const resetBtn = document.getElementById('resetFilterBtn');
+    const prevBtn = document.getElementById('prevPageBtn');
+    const nextBtn = document.getElementById('nextPageBtn');
+    const pageInfo = document.getElementById('pageInfo');
+    const totalCountInfo = document.getElementById('totalCountInfo');
+    const dbNameSpan = document.getElementById('dbName');
+
+    // ---------- Вспомогательные функции ----------
+    function getSeverityClass(severity) {
+        if (!severity) return 'severity-none';
+        const s = severity.toUpperCase();
+        if (s.includes('CRITICAL')) return 'severity-critical';
+        if (s.includes('HIGH')) return 'severity-high';
+        if (s.includes('MEDIUM')) return 'severity-medium';
+        if (s.includes('LOW')) return 'severity-low';
+        return 'severity-none';
     }
 
-    # Убираем пустые значения
-    update_data = {k: v for k, v in update_data.items() if v and v.strip()}
-
-    if update_data:
-        await update_config(update_data)
-
-    config = await get_config()
-    return templates.TemplateResponse("partials/config_display.html", {
-        "request": request,
-        "config": config,
-        "success": True
-    })
-
-
-@app.delete("/partial/delete-key/{key}", response_class=HTMLResponse)
-async def partial_delete_key(request: Request, key: str):
-    """Удаляет ключ и возвращает обновленный блок"""
-    valid_keys = ["mongodb_url", "filename_cve", "filename_bdu",
-                  "update_url_cve", "update_url_bdu", "name_base"]
-    if key in valid_keys:
-        await delete_config_key(key)
-
-    config = await get_config()
-    return templates.TemplateResponse("partials/config_display.html", {
-        "request": request,
-        "config": config
-    })
-
-
-@app.post("/partial/reset-default", response_class=HTMLResponse)
-async def partial_reset_default(request: Request):
-    """Сбрасывает настройки к дефолтным"""
-    default_config = {
-        "mongodb_url": "mongodb://mongodb:27017/",
-        "filename_cve": "CVE_start.zip",
-        "filename_bdu": "bdu_test_12.xml",
-        "update_url_cve": "https://gitea.com/HADUKEN/TEST_CVE/raw/branch/main/CVE_main1.zip",
-        "update_url_bdu": "https://github.com/HADUKEN467/TEST_CVE_BDU/raw/master/bdu_test_500.xml",
-        "name_base": "bd"
+    function formatDate(dateStr) {
+        if (!dateStr) return '—';
+        try {
+            const d = new Date(dateStr);
+            return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short', day: 'numeric' });
+        } catch { return dateStr; }
     }
-    await update_config(default_config)
-    config = await get_config()
-    return templates.TemplateResponse("partials/config_display.html", {
-        "request": request,
-        "config": config,
-        "success": True
-    })
 
+    // Получить конфиг из /api/config
+    async function fetchConfig() {
+        try {
+            const resp = await fetch(`${API_BASE}/api/config`);
+            if (!resp.ok) throw new Error('Не удалось получить конфиг');
+            const data = await resp.json();
+            if (data.status && data.config && data.config.name_base) {
+                dbNameSpan.textContent = data.config.name_base;
+            } else {
+                dbNameSpan.textContent = 'не задана';
+            }
+        } catch (e) {
+            console.warn('Ошибка получения конфига:', e);
+            dbNameSpan.textContent = 'ошибка';
+            document.getElementById('statusDot').className = 'dot red';
+            document.getElementById('configStatusText').textContent = 'Ошибка';
+        }
+    }
 
-# ==================== ЗАПУСК ====================
+    // Загрузка CVE из API
+    async function fetchCVE(page = 1) {
+        const search = currentFilter.search.trim();
+        const severity = currentFilter.severity;
+
+        const params = new URLSearchParams({
+            page: page,
+            limit: pageSize
+        });
+        if (search) params.append('search', search);
+        if (severity) params.append('severity', severity);
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/cves?${params}`);
+            if (!resp.ok) throw new Error('Ошибка загрузки CVE');
+            const data = await resp.json();
+            totalRecords = data.total || 0;
+            return data;
+        } catch (error) {
+            console.error('Ошибка загрузки CVE:', error);
+            throw error;
+        }
+    }
+
+    // ---------- Отрисовка таблицы ----------
+    function renderTable(data) {
+        if (!data || data.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
+                <i class="fas fa-inbox"></i>
+                <div>Уязвимости не найдены</div>
+            </td></tr>`;
+            totalCountInfo.textContent = `Всего записей: 0`;
+            return;
+        }
+
+        let html = '';
+        data.forEach(item => {
+            const cveId = item.cveMetadata?.cveId || item._id || '—';
+            const desc = item.descriptions?.[0]?.value || 'Нет описания';
+            const severity = item.metrics?.cvssMetricV31?.[0]?.cvssData?.baseSeverity || 'NONE';
+            const severityClass = getSeverityClass(severity);
+            const published = formatDate(item.cveMetadata?.datePublished);
+            const status = item.vulnStatus || '—';
+
+            html += `<tr>
+                <td><span class="cve-id">${cveId}</span></td>
+                <td><div class="desc-preview" title="${desc.replace(/"/g, '&quot;')}">${desc}</div></td>
+                <td><span class="severity-badge ${severityClass}">${severity}</span></td>
+                <td>${published}</td>
+                <td><span class="status-badge">${status}</span></td>
+            </tr>`;
+        });
+        tbody.innerHTML = html;
+        totalCountInfo.textContent = `Всего записей: ${totalRecords}`;
+    }
+
+    // ---------- Обновить страницу ----------
+    async function refreshTable() {
+        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
+            <i class="fas fa-spinner fa-pulse"></i>
+            <div>Загрузка...</div>
+        </td></tr>`;
+
+        try {
+            const result = await fetchCVE(currentPage);
+            renderTable(result.items);
+            const totalPages = Math.ceil(result.total / pageSize) || 1;
+            pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= totalPages;
+        } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
+                <i class="fas fa-exclamation-triangle" style="color:#ef4444;"></i>
+                <div>Ошибка загрузки данных</div>
+            </td></tr>`;
+        }
+    }
+
+    // ---------- Обработчики ----------
+    applyBtn.addEventListener('click', () => {
+        currentFilter.search = searchInput.value;
+        currentFilter.severity = severityFilter.value;
+        currentPage = 1;
+        refreshTable();
+    });
+
+    resetBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        severityFilter.value = '';
+        currentFilter.search = '';
+        currentFilter.severity = '';
+        currentPage = 1;
+        refreshTable();
+    });
+
+    prevBtn.addEventListener('click', () => {
+        if (currentPage > 1) {
+            currentPage--;
+            refreshTable();
+        }
+    });
+
+    nextBtn.addEventListener('click', () => {
+        currentPage++;
+        refreshTable();
+    });
+
+    // ---------- Инициализация ----------
+    async function init() {
+        await fetchConfig();
+        await refreshTable();
+    }
+
+    init();
+</script>
+</body>
+</html>
+    """
+
+# ---------- API Эндпоинты ----------
+@app.get("/api/config")
+async def get_config():
+    """Получить конфигурацию"""
+    db_name = os.getenv("MONGODB_DB_NAME", "cve_database")
+    return {
+        "status": True,
+        "config": {
+            "name_base": db_name,
+            "mongodb_connected": db is not None
+        }
+    }
+
+@app.get("/api/cves")
+async def get_cves(
+    page: int = Query(1, ge=1, description="Номер страницы"),
+    limit: int = Query(20, ge=1, le=100, description="Количество записей на странице"),
+    search: Optional[str] = Query(None, description="Поиск по ID или описанию"),
+    severity: Optional[str] = Query(None, description="Фильтр по уровню опасности")
+):
+    """
+    Получить список CVE из MongoDB с пагинацией и фильтрацией
+    """
+    try:
+        # Проверяем подключение к БД
+        if db is None:
+            return JSONResponse(
+                status_code=503,
+                content={
+                    "status": False,
+                    "message": "MongoDB не доступна",
+                    "items": [],
+                    "total": 0,
+                    "page": page,
+                    "pageSize": limit
+                }
+            )
+
+        # Выбираем коллекцию CVE
+        collection = db["CVE"]
+        
+        # Строим фильтр для поиска
+        query = {}
+        
+        # Поиск по тексту
+        if search and search.strip():
+            search_term = search.strip()
+            query["$or"] = [
+                {"cveMetadata.cveId": {"$regex": search_term, "$options": "i"}},
+                {"descriptions.value": {"$regex": search_term, "$options": "i"}}
+            ]
+        
+        # Фильтр по уровню опасности
+        if severity and severity.strip():
+            severity_upper = severity.upper()
+            query["metrics.cvssMetricV31.cvssData.baseSeverity"] = severity_upper
+        
+        # Получаем общее количество документов
+        total = await collection.count_documents(query)
+        
+        # Получаем данные с пагинацией
+        skip = (page - 1) * limit
+        cursor = collection.find(query).skip(skip).limit(limit)
+        items = await cursor.to_list(length=limit)
+        
+        # Преобразуем ObjectId в строку для JSON
+        for item in items:
+            if "_id" in item:
+                item["_id"] = str(item["_id"])
+        
+        return {
+            "status": True,
+            "items": items,
+            "total": total,
+            "page": page,
+            "pageSize": limit,
+            "totalPages": (total + limit - 1) // limit if total > 0 else 1
+        }
+        
+    except Exception as e:
+        print(f"❌ Ошибка получения CVE: {e}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "status": False,
+                "message": f"Ошибка получения данных: {str(e)}",
+                "items": [],
+                "total": 0,
+                "page": page,
+                "pageSize": limit
+            }
+        )
+
+@app.get("/api/db-status")
+async def get_db_status():
+    """Проверить статус подключения к MongoDB"""
+    if db is None:
+        return {
+            "status": False,
+            "message": "MongoDB не подключена"
+        }
+    
+    try:
+        # Проверяем подключение
+        await mongo_client.admin.command('ping')
+        
+        # Получаем список коллекций
+        collections = await db.list_collection_names()
+        
+        # Считаем количество документов в коллекции CVE
+        cve_count = 0
+        if "CVE" in collections:
+            cve_count = await db["CVE"].count_documents({})
+        
+        return {
+            "status": True,
+            "message": "MongoDB подключена",
+            "database": db.name,
+            "collections": collections,
+            "cve_count": cve_count
+        }
+    except Exception as e:
+        return {
+            "status": False,
+            "message": f"Ошибка: {str(e)}"
+        }
+
+@app.get("/api/cve/{cve_id}")
+async def get_cve_by_id(cve_id: str):
+    """Получить конкретную CVE по ID"""
+    try:
+        if db is None:
+            return JSONResponse(
+                status_code=503,
+                content={"status": False, "message": "MongoDB не доступна"}
+            )
+        
+        collection = db["CVE"]
+        # Ищем по cveId
+        doc = await collection.find_one({"cveMetadata.cveId": cve_id})
+        
+        if not doc:
+            return JSONResponse(
+                status_code=404,
+                content={"status": False, "message": f"CVE {cve_id} не найдена"}
+            )
+        
+        # Преобразуем ObjectId
+        if "_id" in doc:
+            doc["_id"] = str(doc["_id"])
+        
+        return {
+            "status": True,
+            "data": doc
+        }
+        
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"status": False, "message": str(e)}
+        )
+
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8080, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8086, reload=True)

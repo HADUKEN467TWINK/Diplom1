@@ -1,4 +1,4 @@
-#!/home/okumush@dmn.zbr/git_repo/Diplom1/CVE/Viewer_cve/venv/bin/python3
+#!/home/okumush@dmn.zbr/git_repo/Rfac_diplom/CVE/Front/Viewer_cve/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
