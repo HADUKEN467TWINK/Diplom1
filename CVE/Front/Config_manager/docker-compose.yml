@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: config-manager
     ports:
-      - "8085:8085"
+      - "8002:8002"
     restart: unless-stopped
     volumes:
       - ./templates:/app/templates

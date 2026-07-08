@@ -4,7 +4,9 @@ services:
   app:
     build: .
     ports:
-      - "8086:8086"
+      - "8003:8003"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
     restart: unless-stopped
     networks:
       - redis-mini-storage-network

@@ -100,7 +100,7 @@
             width: 20px;
             font-size: 16px;
         }
-        .filter-panel input, 
+        .filter-panel input,
         .filter-panel select {
             padding: 10px 14px;
             border: 1px solid #d1d9e6;
@@ -356,7 +356,7 @@
 
 <script>
     // ---------- Конфигурация ----------
-    const API_BASE = window.location.origin; // используем текущий хост: порт
+    const API_BASE = window.location.origin;
 
     // Состояние
     let currentPage = 1;
@@ -398,10 +398,10 @@
         } catch { return dateStr; }
     }
 
-    // Получить конфиг (имя базы) из /config
+    // Получить конфиг из /api/config
     async function fetchConfig() {
         try {
-            const resp = await fetch(`${API_BASE}/config`);
+            const resp = await fetch(`${API_BASE}/api/config`);
             if (!resp.ok) throw new Error('Не удалось получить конфиг');
             const data = await resp.json();
             if (data.status && data.config && data.config.name_base) {
@@ -412,96 +412,33 @@
         } catch (e) {
             console.warn('Ошибка получения конфига:', e);
             dbNameSpan.textContent = 'ошибка';
+            document.getElementById('statusDot').className = 'dot red';
+            document.getElementById('configStatusText').textContent = 'Ошибка';
         }
     }
 
-    // Загрузка CVE с фильтрацией и пагинацией
+    // Загрузка CVE из API
     async function fetchCVE(page = 1) {
         const search = currentFilter.search.trim();
         const severity = currentFilter.severity;
 
-        // Собираем query параметры для имитации фильтрации (сервер должен поддерживать)
-        // В API из задания нет эндпоинта для фильтрации, поэтому эмулируем через /cves? 
-        // Но в предоставленном api.py нет GET /cves. 
-        // Для демонстрации используем заглушку: если эндпоинт не реализован — покажем тестовые данные.
-        // В реальном проекте нужно добавить ручку GET /cves с пагинацией и фильтрацией.
-        // Ниже — адаптер, который пытается вызвать реальный эндпоинт, а при его отсутствии — использует мок.
-
-        // --- ВАЖНО: в вашем api.py нет GET /cves, поэтому для демонстрации мы эмулируем ответ.
-        // Если вы добавите такой эндпоинт — замените блок ниже на реальный запрос.
-        // Пока оставляем мок, но с имитацией фильтрации на клиенте.
-        return fetchMockData(page, search, severity);
-    }
-
-    // ---------- МОК ДАННЫХ (для демонстрации, т.к. в API нет GET /cves) ----------
-    // В реальном проекте удалите этот блок и используйте реальный запрос к бэкенду.
-    async function fetchMockData(page, search, severity) {
-        // Имитируем задержку
-        await new Promise(resolve => setTimeout(resolve, 400));
-
-        // Генерация случайных CVE (всего 50 штук для пагинации)
-        const allMock = [];
-        const severities = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'NONE'];
-        const descr = [
-            'Уязвимость удалённого выполнения кода в библиотеке libXYZ',
-            'Повышение привилегий через некорректную проверку прав',
-            'Отказ в обслуживании при обработке специально сформированных пакетов',
-            'Обход ограничений безопасности через межсайтовый скриптинг',
-            'Утечка информации в результате неверной конфигурации CORS',
-            'Переполнение буфера в драйвере устройства',
-            'Внедрение SQL-команд в параметрах запроса',
-            'Недостаточная энтропия в генераторе случайных чисел',
-            'Механизм аутентификации обходится через подделку JWT',
-            'Несанкционированный доступ к файловой системе'
-        ];
-        for (let i = 1; i <= 80; i++) {
-            const sev = severities[i % severities.length];
-            const year = 2020 + (i % 6);
-            const id = `CVE-${year}-${String(1000 + i * 7).padStart(4, '0')}`;
-            allMock.push({
-                cveMetadata: {
-                    cveId: id,
-                    datePublished: `202${i % 4}-${String(10 + (i % 12)).padStart(2, '0')}-${String(10 + (i % 20)).padStart(2, '0')}T12:00:00Z`,
-                    dateUpdated: `202${i % 4 + 1}-${String(10 + (i % 12)).padStart(2, '0')}-${String(10 + (i % 20)).padStart(2, '0')}T12:00:00Z`,
-                },
-                descriptions: [{ value: descr[i % descr.length] + ` (CVE-${id})`, lang: 'en' }],
-                metrics: {
-                    cvssMetricV31: [{
-                        cvssData: { baseSeverity: sev, baseScore: (2 + (i % 8) + 0.5).toFixed(1) }
-                    }]
-                },
-                vulnStatus: i % 3 === 0 ? 'Analyzed' : (i % 3 === 1 ? 'Modified' : 'Awaiting Analysis')
-            });
-        }
-
-        // Фильтрация по поиску и severity
-        let filtered = allMock;
-        if (search) {
-            const s = search.toLowerCase();
-            filtered = filtered.filter(item => {
-                const id = (item.cveMetadata?.cveId || '').toLowerCase();
-                const desc = (item.descriptions?.[0]?.value || '').toLowerCase();
-                return id.includes(s) || desc.includes(s);
-            });
-        }
-        if (severity) {
-            filtered = filtered.filter(item => {
-                const sev = item.metrics?.cvssMetricV31?.[0]?.cvssData?.baseSeverity || '';
-                return sev.toUpperCase() === severity.toUpperCase();
-            });
-        }
-
-        totalRecords = filtered.length;
-        const start = (page - 1) * pageSize;
-        const end = Math.min(start + pageSize, totalRecords);
-        const paginated = filtered.slice(start, end);
-
-        return {
-            items: paginated,
-            total: totalRecords,
+        const params = new URLSearchParams({
             page: page,
-            pageSize: pageSize
-        };
+            limit: pageSize
+        });
+        if (search) params.append('search', search);
+        if (severity) params.append('severity', severity);
+
+        try {
+            const resp = await fetch(`${API_BASE}/api/cves?${params}`);
+            if (!resp.ok) throw new Error('Ошибка загрузки CVE');
+            const data = await resp.json();
+            totalRecords = data.total || 0;
+            return data;
+        } catch (error) {
+            console.error('Ошибка загрузки CVE:', error);
+            throw error;
+        }
     }
 
     // ---------- Отрисовка таблицы ----------
@@ -517,12 +454,12 @@
 
         let html = '';
         data.forEach(item => {
-            const cveId = item.cveMetadata?.cveId || '—';
-            const desc = item.descriptions?.[0]?.value || 'Нет описания';
-            const severity = item.metrics?.cvssMetricV31?.[0]?.cvssData?.baseSeverity || 'NONE';
+            const cveId = item.cveMetadata?.cveId || item._id || '—';
+            const desc = item.containers?.cna?.descriptions?.[0]?.value || 'Нет описания';
+            const severity = item.containers?.cna?.metrics?.[0]?.cvssV3_1?.baseSeverity || item.containers?.cna?.metrics?.[0]?.cvssV4_0?.baseSeverity || 'NONE';
             const severityClass = getSeverityClass(severity);
             const published = formatDate(item.cveMetadata?.datePublished);
-            const status = item.vulnStatus || '—';
+            const status = item.cveMetadata?.state || '—';
 
             html += `<tr>
                 <td><span class="cve-id">${cveId}</span></td>
@@ -538,7 +475,6 @@
 
     // ---------- Обновить страницу ----------
     async function refreshTable() {
-        // Показываем спиннер
         tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
             <i class="fas fa-spinner fa-pulse"></i>
             <div>Загрузка...</div>
@@ -547,7 +483,6 @@
         try {
             const result = await fetchCVE(currentPage);
             renderTable(result.items);
-            // пагинация
             const totalPages = Math.ceil(result.total / pageSize) || 1;
             pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
             prevBtn.disabled = currentPage <= 1;

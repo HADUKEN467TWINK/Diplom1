@@ -8,6 +8,6 @@ RUN pip install redis[hiredis]
 
 COPY . .
 
-EXPOSE 8000
+EXPOSE 8083
 
 CMD ["python", "main.py"]

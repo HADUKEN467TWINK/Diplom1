@@ -8,6 +8,6 @@ COPY . .
 
 RUN ls -la /app/ && ls -la /app/templates/ || echo "templates folder not found"
 
-EXPOSE 8085
+EXPOSE 8002
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8085", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8002", "--reload"]

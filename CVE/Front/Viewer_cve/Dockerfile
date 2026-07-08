@@ -8,6 +8,6 @@ RUN pip install fastapi uvicorn motor pydantic requests lxml redis hiredis
 
 COPY . .
 
-EXPOSE 8086
+EXPOSE 8003
 
 CMD ["python", "main.py"]
