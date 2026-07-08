@@ -8,7 +8,7 @@ alias deactivate 'test $?_OLD_VIRTUAL_PATH != 0 && setenv PATH "$_OLD_VIRTUAL_PA
 # Unset irrelevant variables.
 deactivate nondestructive
 
-setenv VIRTUAL_ENV /home/okumush@dmn.zbr/git_repo/Diplom1/CVE/Viewer_cve/venv
+setenv VIRTUAL_ENV /home/okumush@dmn.zbr/git_repo/Rfac_diplom/CVE/Front/Config_manager/venv
 
 set _OLD_VIRTUAL_PATH="$PATH"
 setenv PATH "$VIRTUAL_ENV/"bin":$PATH"

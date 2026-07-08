@@ -38,7 +38,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV=/home/okumush@dmn.zbr/git_repo/Diplom1/CVE/Viewer_cve/venv
+VIRTUAL_ENV=/home/okumush@dmn.zbr/git_repo/Rfac_diplom/CVE/Front/Config_manager/venv
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

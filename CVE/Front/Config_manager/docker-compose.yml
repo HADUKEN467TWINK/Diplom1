@@ -7,10 +7,11 @@ services:
       dockerfile: Dockerfile
     container_name: config-manager
     ports:
-      - "8080:8080"
+      - "8085:8085"
     restart: unless-stopped
     volumes:
-      - ./:/app  # Для разработки
+      - ./templates:/app/templates
+      - ./main.py:/app/main.py
     environment:
       REDIS_HOST: my-redis
       REDIS_PORT: 6379
