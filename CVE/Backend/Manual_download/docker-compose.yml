@@ -10,14 +10,10 @@ services:
       - ./__download_file__:/app/__download_file__
     networks:
       - redis-mini-storage-network
-      - view-network
 
 networks:
   redis-mini-storage-network:
     external: true
-  view-network:
-    driver: bridge
-    name: connect-view
 
 volumes:
   mongodb_data:

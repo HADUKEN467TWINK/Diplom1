@@ -10,11 +10,8 @@ services:
     restart: unless-stopped
     networks:
       - redis-mini-storage-network
-      - connect-view
 
 networks:
-  connect-view:
-    external: true
   redis-mini-storage-network:
     external: true
 

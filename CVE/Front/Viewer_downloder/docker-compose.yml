@@ -11,7 +11,6 @@ services:
     restart: unless-stopped
     networks:
       - redis-mini-storage-network
-      - connect-view
 
   app:
     build: .
@@ -22,7 +21,6 @@ services:
       - mongodb
     networks:
       - redis-mini-storage-network
-      - connect-view
 
   mongo-express:
     image: mongo-express
@@ -37,12 +35,9 @@ services:
       - mongodb
     networks:
       - redis-mini-storage-network
-      - connect-view
 
 networks:
   redis-mini-storage-network:
-    external: true
-  connect-view:
     external: true
 
 volumes:

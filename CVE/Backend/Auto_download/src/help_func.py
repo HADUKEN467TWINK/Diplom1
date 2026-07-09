@@ -47,22 +47,41 @@ atributs_list = {
             "identifiers": "identifier"
 }
 
-def download_url(repo_url: str, temp_path: Path):
+async def download_url(repo_url: str, temp_path: Path) -> Path:
+    """Скачивает файл и возвращает путь к нему"""
+    temp_path.mkdir(parents=True, exist_ok=True)
+    
     if '.zip' in repo_url.lower():
-        zip_path = temp_path / "download.zip"
+        zip_path = temp_path / "download_cve.zip"
     else:
-        zip_path = temp_path / "download.xml"
-    response = requests.get(repo_url, stream=True, verify=False)
-    response.raise_for_status()
-    with open(zip_path, "wb") as f:
-        for chunk in response.iter_content(chunk_size=8192):
-            f.write(chunk)
-    return zip_path
+        zip_path = temp_path / "download_bdu.xml"
+    
+    # Создаем сессию с отключенной проверкой SSL
+    session = requests.Session()
+    session.verify = False
+    
+    try:
+        response = session.get(repo_url, stream=True, timeout=30)
+        response.raise_for_status()
+        
+        with open(zip_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        if zip_path.exists():
+            print(f"Файл скачан: {zip_path}, размер: {zip_path.stat().st_size} байт")
+            return zip_path
+        else:
+            raise Exception(f"Файл не был создан: {zip_path}")
+            
+    except Exception as e:
+        raise Exception(f"Ошибка при скачивании: {str(e)}")
 
 async def update_cve_in_mongo(update_url: str):
     with tempfile.TemporaryDirectory() as temp_file:
         temp_path = Path(temp_file)
-        zip_path = download_url(update_url, temp_path)
+        zip_path = await download_url(update_url, temp_path)
         extract_path = temp_path / "extracted"
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(extract_path)
@@ -118,7 +137,7 @@ async def update_bdu_in_mongo(update_url: str):
     excp_change = True
     with tempfile.TemporaryDirectory() as temp_file:
         temp_path = Path(temp_file)
-        downloaded_path = download_url(update_url, temp_path)
+        downloaded_path = await download_url(update_url, temp_path)
         if downloaded_path.suffix.lower() == '.zip':
             # Обработка ZIP
             zip_path = downloaded_path
@@ -176,18 +195,26 @@ async def update_bdu_in_mongo(update_url: str):
                     {"$set": elem},
                     upsert=True
                 )
-                total_files += 1
                 if result.upserted_id is not None:
                     successful_creates += 1
+                    total_files += 1
                 else:
                     successful_updates += 1
             except Exception as e:
                 print(f"Ошибка при вставке {elem.get('_id', 'unknown')}: {e}")
                 errors += 1
-        if total_files == 0:
+        if total_files == 0 and successful_updates == 0:
             return {
                 "status": False,
                 "message": "Файлов с данными о БДУ не обнаружено."
+            }
+        elif total_files == 0 and successful_updates != 0:
+            return {
+                "status": True,
+                "message": "Файлов с данными о БДУ не обнаружено.",
+                "statistics": {
+                    "Обновлённых документов": successful_updates,
+                }
             }
         if excp_change:
             return {

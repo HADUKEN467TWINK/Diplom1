@@ -6,16 +6,14 @@ services:
     ports:
       - "8001:8001"
     restart: unless-stopped
+    volumes:
+    - ./__downloading_base___:/app/__downloading_base___ 
     networks:
       - redis-mini-storage-network
-      - view-network
 
 networks:
   redis-mini-storage-network:
     external: true
-  view-network:
-    driver: bridge
-    name: connect-view
 
 volumes:
   mongodb_data:
