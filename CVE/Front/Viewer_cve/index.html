@@ -4,290 +4,486 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Просмотр CVE</title>
-    <!-- Font Awesome (иконки) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            background: #f4f7fb;
-            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
-            padding: 30px 20px;
-            color: #1e293b;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    body {
+        background: #f4f7fb;
+        font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        padding: 30px 20px;
+        color: #1e293b;
+    }
+    .container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
 
-        /* шапка */
-        .header {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            background: white;
-            padding: 20px 28px;
-            border-radius: 24px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.03);
-            border: 1px solid #e9edf2;
-        }
-        .header h1 {
-            font-size: 26px;
-            font-weight: 600;
-            letter-spacing: -0.3px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .header h1 i {
-            color: #2563eb;
-            font-size: 28px;
-        }
-        .badge {
-            background: #eef2ff;
-            color: #2563eb;
-            font-size: 14px;
-            font-weight: 500;
-            padding: 4px 14px;
-            border-radius: 40px;
-            margin-left: 8px;
-        }
-        .config-status {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f8fafc;
-            padding: 6px 16px 6px 12px;
-            border-radius: 40px;
-            font-size: 14px;
-            border: 1px solid #e2e8f0;
-        }
-        .config-status .dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-        .dot.green { background: #22c55e; }
-        .dot.red { background: #ef4444; }
+    .header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 30px;
+        background: white;
+        padding: 20px 28px;
+        border-radius: 24px;
+        box-shadow: 0 8px 20px rgba(0,0,0,0.03);
+        border: 1px solid #e9edf2;
+    }
+    .header h1 {
+        font-size: 26px;
+        font-weight: 600;
+        letter-spacing: -0.3px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .header h1 i {
+        color: #2563eb;
+        font-size: 28px;
+    }
+    .badge {
+        background: #eef2ff;
+        color: #2563eb;
+        font-size: 14px;
+        font-weight: 500;
+        padding: 4px 14px;
+        border-radius: 40px;
+        margin-left: 8px;
+    }
+    .config-status {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #f8fafc;
+        padding: 6px 16px 6px 12px;
+        border-radius: 40px;
+        font-size: 14px;
+        border: 1px solid #e2e8f0;
+    }
+    .config-status .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    .dot.green { background: #22c55e; }
+    .dot.red { background: #ef4444; }
 
-        /* панель фильтров */
-        .filter-panel {
-            background: white;
-            border-radius: 20px;
-            padding: 20px 24px;
-            margin-bottom: 30px;
-            border: 1px solid #e9edf2;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.02);
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 16px 24px;
-        }
-        .filter-panel .field {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex: 1 1 220px;
-        }
-        .filter-panel .field i {
-            color: #64748b;
-            width: 20px;
-            font-size: 16px;
-        }
-        .filter-panel input,
-        .filter-panel select {
-            padding: 10px 14px;
-            border: 1px solid #d1d9e6;
-            border-radius: 40px;
-            font-size: 14px;
-            background: white;
-            width: 100%;
-            transition: 0.15s;
-            outline: none;
-        }
-        .filter-panel input:focus,
-        .filter-panel select:focus {
-            border-color: #2563eb;
-            box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
-        }
-        .filter-panel .actions {
-            display: flex;
-            gap: 10px;
-            margin-left: auto;
-        }
-        .btn {
-            background: white;
-            border: 1px solid #d1d9e6;
-            padding: 10px 22px;
-            border-radius: 40px;
-            font-weight: 500;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: 0.15s;
-            color: #1e293b;
-        }
-        .btn-primary {
-            background: #2563eb;
-            border: 1px solid #2563eb;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #1d4ed8;
-            border-color: #1d4ed8;
-        }
-        .btn-outline {
-            background: transparent;
-        }
-        .btn-outline:hover {
-            background: #f1f5f9;
-        }
-        .btn i { font-size: 14px; }
+    .filter-panel {
+        background: white;
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 30px;
+        border: 1px solid #e9edf2;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 16px 24px;
+    }
+    .filter-panel .field {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 220px;
+    }
+    .filter-panel .field i {
+        color: #64748b;
+        width: 20px;
+        font-size: 16px;
+    }
+    .filter-panel input,
+    .filter-panel select {
+        padding: 10px 14px;
+        border: 1px solid #d1d9e6;
+        border-radius: 40px;
+        font-size: 14px;
+        background: white;
+        width: 100%;
+        transition: 0.15s;
+        outline: none;
+    }
+    .filter-panel input:focus,
+    .filter-panel select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    .filter-panel .actions {
+        display: flex;
+        gap: 10px;
+        margin-left: auto;
+    }
+    .btn {
+        background: white;
+        border: 1px solid #d1d9e6;
+        padding: 10px 22px;
+        border-radius: 40px;
+        font-weight: 500;
+        font-size: 14px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        transition: 0.15s;
+        color: #1e293b;
+    }
+    .btn-primary {
+        background: #2563eb;
+        border: 1px solid #2563eb;
+        color: white;
+    }
+    .btn-primary:hover {
+        background: #1d4ed8;
+        border-color: #1d4ed8;
+    }
+    .btn-outline {
+        background: transparent;
+    }
+    .btn-outline:hover {
+        background: #f1f5f9;
+    }
+    .btn i { font-size: 14px; }
 
-        /* таблица */
-        .table-wrapper {
-            background: white;
-            border-radius: 24px;
-            border: 1px solid #e9edf2;
-            overflow-x: auto;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.02);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-            min-width: 700px;
-        }
-        thead {
-            background: #f8fafc;
-            border-bottom: 1px solid #e2e8f0;
-        }
-        th {
-            text-align: left;
-            padding: 16px 18px;
-            font-weight: 600;
-            color: #475569;
-            letter-spacing: 0.3px;
-            white-space: nowrap;
-        }
-        td {
-            padding: 14px 18px;
-            border-bottom: 1px solid #f1f5f9;
-            vertical-align: middle;
-        }
-        tr:last-child td {
-            border-bottom: none;
-        }
-        tr:hover td {
-            background: #fafcff;
-        }
-        .cve-id {
-            font-weight: 600;
-            color: #1e293b;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            background: #f1f4f9;
-            padding: 2px 12px;
-            border-radius: 40px;
-            display: inline-block;
-        }
-        .severity-badge {
-            display: inline-block;
-            padding: 2px 14px;
-            border-radius: 40px;
-            font-weight: 600;
-            font-size: 12px;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-            background: #e2e8f0;
-            color: #334155;
-        }
-        .severity-critical { background: #fecaca; color: #b91c1c; }
-        .severity-high    { background: #fdba74; color: #9a3412; }
-        .severity-medium  { background: #fde047; color: #854d0e; }
-        .severity-low     { background: #bbf7d0; color: #166534; }
-        .severity-none    { background: #e2e8f0; color: #475569; }
+    .table-wrapper {
+        background: white;
+        border-radius: 24px;
+        border: 1px solid #e9edf2;
+        overflow-x: auto;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.02);
+    }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+        min-width: 800px;
+    }
+    thead {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    th {
+        text-align: left;
+        padding: 16px 18px;
+        font-weight: 600;
+        color: #475569;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    td {
+        padding: 14px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+    tr:last-child td {
+        border-bottom: none;
+    }
+    tr:hover td {
+        background: #fafcff;
+    }
+    .cve-id {
+        font-weight: 600;
+        color: #1e293b;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 13px;
+        background: #f1f4f9;
+        padding: 2px 12px;
+        border-radius: 40px;
+        display: inline-block;
+        white-space: nowrap;
+    }
+    .severity-badge {
+        display: inline-block;
+        padding: 2px 14px;
+        border-radius: 40px;
+        font-weight: 600;
+        font-size: 12px;
+        letter-spacing: 0.3px;
+        text-transform: uppercase;
+        background: #e2e8f0;
+        color: #334155;
+    }
+    .severity-critical { background: #fecaca; color: #b91c1c; }
+    .severity-high    { background: #fdba74; color: #9a3412; }
+    .severity-medium  { background: #fde047; color: #854d0e; }
+    .severity-low     { background: #bbf7d0; color: #166534; }
+    .severity-none    { background: #e2e8f0; color: #475569; }
+    .severity-unknown { background: #e2e8f0; color: #475569; }
 
-        .desc-preview {
-            max-width: 280px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            color: #334155;
-        }
-        .status-badge {
-            font-size: 12px;
-            background: #eef2ff;
-            padding: 2px 12px;
-            border-radius: 40px;
-            color: #2563eb;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #94a3b8;
-        }
-        .empty-state i {
-            font-size: 48px;
-            margin-bottom: 16px;
-            opacity: 0.3;
-        }
+    /* Описание с возможностью раскрытия */
+    .desc-cell {
+        max-width: 300px;
+        cursor: default;
+    }
+    .desc-preview {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: #334155;
+        line-height: 1.4;
+        word-break: break-word;
+    }
+    .desc-preview.expanded {
+        -webkit-line-clamp: unset;
+        display: block;
+    }
+    .desc-toggle {
+        color: #2563eb;
+        font-size: 12px;
+        cursor: pointer;
+        display: inline-block;
+        margin-top: 2px;
+        font-weight: 500;
+        background: none;
+        border: none;
+        padding: 2px 6px;
+    }
+    .desc-toggle:hover {
+        text-decoration: underline;
+        background: #f1f5f9;
+        border-radius: 4px;
+    }
+
+    /* Ссылки */
+    .references-cell {
+        max-width: 350px;
+        min-width: 150px;
+        word-break: break-word;
+    }
+    .ref-link {
+        display: inline-block;
+        padding: 2px 12px;
+        margin: 2px 4px 2px 0;
+        background: #eef2ff;
+        color: #2563eb;
+        border-radius: 20px;
+        font-size: 12px;
+        text-decoration: none;
+        transition: 0.15s;
+        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        vertical-align: middle;
+    }
+    .ref-link:hover {
+        background: #2563eb;
+        color: white;
+    }
+    .ref-link i {
+        font-size: 10px;
+        margin-right: 4px;
+    }
+    .ref-more {
+        color: #2563eb;
+        font-size: 12px;
+        display: inline-block;
+        margin-left: 2px;
+        cursor: pointer;
+        font-weight: 500;
+        padding: 2px 10px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        border: none;
+        transition: 0.15s;
+    }
+    .ref-more:hover {
+        background: #e2e8f0;
+        text-decoration: underline;
+    }
+    .hidden-refs {
+        display: none;
+    }
+    .hidden-refs .ref-link {
+        display: inline-block;
+    }
+
+    .status-badge {
+        font-size: 12px;
+        background: #eef2ff;
+        padding: 2px 12px;
+        border-radius: 40px;
+        color: #2563eb;
+    }
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+    .empty-state i {
+        font-size: 48px;
+        margin-bottom: 16px;
+        opacity: 0.3;
+    }
+
+    /* Пагинация с полем ввода */
+    .pagination {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 16px;
+        padding: 20px 0 10px;
+        font-size: 14px;
+        color: #475569;
+        flex-wrap: wrap;
+    }
+    .pagination button {
+        background: white;
+        border: 1px solid #d1d9e6;
+        padding: 6px 18px;
+        border-radius: 40px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: 0.1s;
+    }
+    .pagination button:hover:not(:disabled) {
+        background: #f1f5f9;
+    }
+    .pagination button:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+    }
+    .pagination-input {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #f8fafc;
+        padding: 4px 8px 4px 14px;
+        border-radius: 40px;
+        border: 1px solid #e2e8f0;
+    }
+    .pagination-input span {
+        font-size: 13px;
+        color: #64748b;
+    }
+    .pagination-input input {
+        width: 50px;
+        padding: 4px 6px;
+        border: 1px solid #d1d9e6;
+        border-radius: 20px;
+        font-size: 14px;
+        text-align: center;
+        outline: none;
+        background: white;
+        transition: 0.15s;
+    }
+    .pagination-input input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    .pagination-input input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+    }
+    .pagination-input input[type=number] {
+        -moz-appearance: textfield;
+    }
+    .pagination-input .btn-go {
+        background: #2563eb;
+        border: none;
+        color: white;
+        padding: 4px 14px;
+        border-radius: 30px;
+        cursor: pointer;
+        font-size: 13px;
+        transition: 0.15s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+    .pagination-input .btn-go:hover {
+        background: #1d4ed8;
+    }
+    .pagination-input .btn-go i {
+        font-size: 12px;
+    }
+
+    .footer-meta {
+        margin-top: 16px;
+        text-align: right;
+        font-size: 13px;
+        color: #94a3b8;
+        padding-right: 8px;
+    }
+
+    /* Модальное окно для полного описания */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-overlay.active {
+        display: flex;
+    }
+    .modal-box {
+        background: white;
+        max-width: 600px;
+        width: 90%;
+        max-height: 80vh;
+        border-radius: 16px;
+        padding: 30px;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        overflow-y: auto;
+        position: relative;
+    }
+    .modal-box h3 {
+        margin-bottom: 12px;
+        color: #1e293b;
+    }
+    .modal-box .modal-close {
+        position: absolute;
+        top: 12px;
+        right: 16px;
+        font-size: 24px;
+        cursor: pointer;
+        color: #94a3b8;
+        background: none;
+        border: none;
+        transition: 0.15s;
+    }
+    .modal-box .modal-close:hover {
+        color: #1e293b;
+        transform: scale(1.1);
+    }
+    .modal-box .full-description {
+        color: #334155;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    @media (max-width: 700px) {
+        .header { flex-direction: column; align-items: start; gap: 12px; }
+        .filter-panel .actions { margin-left: 0; width: 100%; }
+        .filter-panel .actions .btn { flex: 1; justify-content: center; }
+        .references-cell { max-width: 200px; }
+        .ref-link { font-size: 10px; padding: 1px 8px; }
+        .desc-cell { max-width: 150px; }
         .pagination {
-            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .pagination-input {
+            width: 100%;
             justify-content: center;
-            align-items: center;
-            gap: 16px;
-            padding: 20px 0 10px;
-            font-size: 14px;
-            color: #475569;
         }
-        .pagination button {
-            background: white;
-            border: 1px solid #d1d9e6;
-            padding: 6px 18px;
-            border-radius: 40px;
-            cursor: pointer;
-            font-weight: 500;
-            transition: 0.1s;
-        }
-        .pagination button:hover:not(:disabled) {
-            background: #f1f5f9;
-        }
-        .pagination button:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-        }
-        .spinner {
-            text-align: center;
-            padding: 40px 0;
-            color: #2563eb;
-        }
-        .footer-meta {
-            margin-top: 16px;
-            text-align: right;
-            font-size: 13px;
-            color: #94a3b8;
-            padding-right: 8px;
-        }
-
-        @media (max-width: 700px) {
-            .header { flex-direction: column; align-items: start; gap: 12px; }
-            .filter-panel .actions { margin-left: 0; width: 100%; }
-            .filter-panel .actions .btn { flex: 1; justify-content: center; }
-        }
+    }
     </style>
 </head>
 <body>
 <div class="container">
-    <!-- Шапка -->
     <div class="header">
         <h1>
             <i class="fas fa-shield-alt"></i> CVE Explorer
@@ -301,7 +497,6 @@
         </div>
     </div>
 
-    <!-- Фильтры -->
     <div class="filter-panel">
         <div class="field">
             <i class="fas fa-search"></i>
@@ -316,6 +511,7 @@
                 <option value="MEDIUM">Средний</option>
                 <option value="LOW">Низкий</option>
                 <option value="NONE">Нет</option>
+                <option value="UNKNOWN">Неизвестно</option>
             </select>
         </div>
         <div class="actions">
@@ -324,7 +520,6 @@
         </div>
     </div>
 
-    <!-- Таблица -->
     <div class="table-wrapper">
         <table>
             <thead>
@@ -333,7 +528,7 @@
                     <th>Описание</th>
                     <th>Уровень</th>
                     <th>Дата публикации</th>
-                    <th>Статус</th>
+                    <th>Ссылки</th>
                 </tr>
             </thead>
             <tbody id="cveTableBody">
@@ -348,26 +543,36 @@
     <!-- Пагинация -->
     <div class="pagination">
         <button id="prevPageBtn" disabled><i class="fas fa-chevron-left"></i> Назад</button>
-        <span id="pageInfo">Страница 1</span>
+        <span id="pageInfo">Страница 1 из 1</span>
+        <div class="pagination-input">
+            <span>Перейти к</span>
+            <input type="number" id="pageInput" min="1" value="1">
+            <button class="btn-go" id="goToPageBtn" onclick="goToPage()">
+                <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
         <button id="nextPageBtn">Вперед <i class="fas fa-chevron-right"></i></button>
     </div>
     <div class="footer-meta" id="totalCountInfo">Всего записей: —</div>
 </div>
 
+<!-- Модальное окно для полного описания -->
+<div class="modal-overlay" id="descModal">
+    <div class="modal-box">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <h3 id="modalTitle">Полное описание</h3>
+        <div class="full-description" id="modalBody"></div>
+    </div>
+</div>
+
 <script>
-    // ---------- Конфигурация ----------
     const API_BASE = window.location.origin;
 
-    // Состояние
     let currentPage = 1;
     const pageSize = 20;
     let totalRecords = 0;
-    let currentFilter = {
-        search: '',
-        severity: ''
-    };
+    let currentFilter = { search: '', severity: '' };
 
-    // DOM ссылки
     const tbody = document.getElementById('cveTableBody');
     const searchInput = document.getElementById('searchInput');
     const severityFilter = document.getElementById('severityFilter');
@@ -378,8 +583,15 @@
     const pageInfo = document.getElementById('pageInfo');
     const totalCountInfo = document.getElementById('totalCountInfo');
     const dbNameSpan = document.getElementById('dbName');
+    const pageInput = document.getElementById('pageInput');
+    const goToPageBtn = document.getElementById('goToPageBtn');
 
-    // ---------- Вспомогательные функции ----------
+    // Модальное окно
+    const modalOverlay = document.getElementById('descModal');
+    const modalBody = document.getElementById('modalBody');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalClose = document.getElementById('modalClose');
+
     function getSeverityClass(severity) {
         if (!severity) return 'severity-none';
         const s = severity.toUpperCase();
@@ -387,7 +599,7 @@
         if (s.includes('HIGH')) return 'severity-high';
         if (s.includes('MEDIUM')) return 'severity-medium';
         if (s.includes('LOW')) return 'severity-low';
-        return 'severity-none';
+        return 'severity-unknown';
     }
 
     function formatDate(dateStr) {
@@ -398,7 +610,54 @@
         } catch { return dateStr; }
     }
 
-    // Получить конфиг из /api/config
+    function getReferences(item) {
+        const refs = item.containers?.cna?.references || [];
+        return refs;
+    }
+
+    function renderReferences(refs) {
+        if (!refs || refs.length === 0) {
+            return '<span style="color:#94a3b8;font-size:12px;">Нет ссылок</span>';
+        }
+        
+        let html = '';
+        refs.forEach(ref => {
+            const url = ref.url || '#';
+            const name = ref.name || 'Ссылка';
+            html += `<a href="${url}" target="_blank" class="ref-link" title="${name}"><i class="fas fa-external-link-alt"></i> ${name}</a>`;
+        });
+        
+        return html;
+    }
+
+    function updatePagination(totalPages) {
+        pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= totalPages;
+        pageInput.value = currentPage;
+        pageInput.max = totalPages;
+    }
+
+    // Глобальная функция для перехода
+    window.goToPage = function() {
+        let page = parseInt(pageInput.value);
+        const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+        
+        if (isNaN(page) || page < 1) {
+            page = 1;
+        }
+        if (page > totalPages) {
+            page = totalPages;
+        }
+        
+        if (page !== currentPage) {
+            currentPage = page;
+            refreshTable();
+        } else {
+            pageInput.value = currentPage;
+        }
+    };
+
     async function fetchConfig() {
         try {
             const resp = await fetch(`${API_BASE}/api/config`);
@@ -417,7 +676,6 @@
         }
     }
 
-    // Загрузка CVE из API
     async function fetchCVE(page = 1) {
         const search = currentFilter.search.trim();
         const severity = currentFilter.severity;
@@ -441,7 +699,6 @@
         }
     }
 
-    // ---------- Отрисовка таблицы ----------
     function renderTable(data) {
         if (!data || data.length === 0) {
             tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
@@ -453,32 +710,67 @@
         }
 
         let html = '';
-        data.forEach(item => {
+        data.forEach((item, index) => {
             const cveId = item.cveMetadata?.cveId || item._id || '—';
             const desc = item.containers?.cna?.descriptions?.[0]?.value || 'Нет описания';
             const severity = item.severity_info?.severity || 'NONE';
             const score = item.severity_info?.score || 0;
-            const version = item.severity_info?.version || '';
             const severityClass = getSeverityClass(severity);
             const published = formatDate(item.cveMetadata?.datePublished);
-            const status = item.cveMetadata?.state || '—';
+            const refs = getReferences(item);
+            
+            const uniqueId = `desc-${index}-${cveId.replace(/[^a-zA-Z0-9]/g, '')}`;
 
             html += `<tr>
                 <td><span class="cve-id">${cveId}</span></td>
-                <td><div class="desc-preview" title="${desc.replace(/"/g, '&quot;')}">${desc}</div></td>
+                <td class="desc-cell">
+                    <div class="desc-preview" id="${uniqueId}">${desc}</div>
+                    ${desc.length > 120 ? `<span class="desc-toggle" onclick="toggleDesc('${uniqueId}', this)">Показать полностью</span>` : ''}
+                </td>
                 <td>
                     <span class="severity-badge ${severityClass}">${severity}</span>
                     ${score ? `<span style="font-size:11px;color:#64748b;display:block;">Score: ${score}</span>` : ''}
                 </td>
                 <td>${published}</td>
-                <td><span class="status-badge">${status}</span></td>
+                <td class="references-cell">${renderReferences(refs)}</td>
             </tr>`;
         });
         tbody.innerHTML = html;
         totalCountInfo.textContent = `Всего записей: ${totalRecords}`;
     }
 
-    // ---------- Обновить страницу ----------
+    window.toggleDesc = function(id, btn) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const isExpanded = el.classList.contains('expanded');
+        if (isExpanded) {
+            el.classList.remove('expanded');
+            btn.textContent = 'Показать полностью';
+        } else {
+            el.classList.add('expanded');
+            btn.textContent = 'Свернуть';
+        }
+    };
+
+    modalClose.addEventListener('click', () => {
+        modalOverlay.classList.remove('active');
+        document.body.style.overflow = '';
+    });
+
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) {
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            modalOverlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    });
+
     async function refreshTable() {
         tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
             <i class="fas fa-spinner fa-pulse"></i>
@@ -489,9 +781,7 @@
             const result = await fetchCVE(currentPage);
             renderTable(result.items);
             const totalPages = Math.ceil(result.total / pageSize) || 1;
-            pageInfo.textContent = `Страница ${currentPage} из ${totalPages}`;
-            prevBtn.disabled = currentPage <= 1;
-            nextBtn.disabled = currentPage >= totalPages;
+            updatePagination(totalPages);
         } catch (error) {
             console.error('Ошибка загрузки:', error);
             tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
@@ -501,7 +791,7 @@
         }
     }
 
-    // ---------- Обработчики ----------
+    // Обработчики
     applyBtn.addEventListener('click', () => {
         currentFilter.search = searchInput.value;
         currentFilter.severity = severityFilter.value;
@@ -530,7 +820,31 @@
         refreshTable();
     });
 
-    // ---------- Инициализация ----------
+    // Кнопка перехода - через onclick
+    goToPageBtn.onclick = function(e) {
+        e.preventDefault();
+        window.goToPage();
+    };
+
+    // Enter в поле ввода
+    pageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            window.goToPage();
+        }
+    });
+
+    // Валидация при потере фокуса
+    pageInput.addEventListener('blur', () => {
+        const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+        let val = parseInt(pageInput.value);
+        if (isNaN(val) || val < 1) {
+            pageInput.value = currentPage;
+        } else if (val > totalPages) {
+            pageInput.value = totalPages;
+        }
+    });
+
     async function init() {
         await fetchConfig();
         await refreshTable();
