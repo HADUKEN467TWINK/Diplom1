@@ -1,0 +1,10 @@
+{
+    "mcpServers": {
+        "server-mongodb": {
+            "command": "python",
+            "args": [
+                ".\\main.py"
+            ]
+        }
+    }
+}

@@ -11,8 +11,10 @@ from typing import Optional, List, Dict, Any
 import uvicorn
 from datetime import datetime
 import asyncio
+from mcp.server.fastmcp import FastMCP
 
 app = FastAPI(title="Viewer_CVE")
+mcp = FastMCP("MCP Server")
 
 # CORS
 app.add_middleware(
@@ -71,7 +73,7 @@ async def home():
                     max-width: 1400px;
                     margin: 0 auto;
                 }
-        
+
                 /* шапка */
                 .header {
                     display: flex;
@@ -124,7 +126,7 @@ async def home():
                 }
                 .dot.green { background: #22c55e; }
                 .dot.red { background: #ef4444; }
-        
+
                 /* панель фильтров */
                 .filter-panel {
                     background: white;
@@ -200,7 +202,7 @@ async def home():
                     background: #f1f5f9;
                 }
                 .btn i { font-size: 14px; }
-        
+
                 /* таблица */
                 .table-wrapper {
                     background: white;
@@ -264,7 +266,7 @@ async def home():
                 .severity-medium  { background: #fde047; color: #854d0e; }
                 .severity-low     { background: #bbf7d0; color: #166534; }
                 .severity-none    { background: #e2e8f0; color: #475569; }
-        
+
                 .desc-preview {
                     max-width: 280px;
                     white-space: nowrap;
@@ -326,7 +328,7 @@ async def home():
                     color: #94a3b8;
                     padding-right: 8px;
                 }
-        
+
                 @media (max-width: 700px) {
                     .header { flex-direction: column; align-items: start; gap: 12px; }
                     .filter-panel .actions { margin-left: 0; width: 100%; }
@@ -349,7 +351,7 @@ async def home():
                     <span id="dbName" style="font-weight: 500;">—</span>
                 </div>
             </div>
-        
+
             <!-- Фильтры -->
             <div class="filter-panel">
                 <div class="field">
@@ -372,7 +374,7 @@ async def home():
                     <button class="btn btn-outline" id="resetFilterBtn"><i class="fas fa-undo-alt"></i> Сброс</button>
                 </div>
             </div>
-        
+
             <!-- Таблица -->
             <div class="table-wrapper">
                 <table>
@@ -393,7 +395,7 @@ async def home():
                     </tbody>
                 </table>
             </div>
-        
+
             <!-- Пагинация -->
             <div class="pagination">
                 <button id="prevPageBtn" disabled><i class="fas fa-chevron-left"></i> Назад</button>
@@ -402,11 +404,11 @@ async def home():
             </div>
             <div class="footer-meta" id="totalCountInfo">Всего записей: —</div>
         </div>
-        
+
         <script>
             // ---------- Конфигурация ----------
             const API_BASE = window.location.origin;
-        
+
             // Состояние
             let currentPage = 1;
             const pageSize = 20;
@@ -415,7 +417,7 @@ async def home():
                 search: '',
                 severity: ''
             };
-        
+
             // DOM ссылки
             const tbody = document.getElementById('cveTableBody');
             const searchInput = document.getElementById('searchInput');
@@ -427,7 +429,7 @@ async def home():
             const pageInfo = document.getElementById('pageInfo');
             const totalCountInfo = document.getElementById('totalCountInfo');
             const dbNameSpan = document.getElementById('dbName');
-        
+
             // ---------- Вспомогательные функции ----------
             function getSeverityClass(severity) {
                 if (!severity) return 'severity-none';
@@ -438,7 +440,7 @@ async def home():
                 if (s.includes('LOW')) return 'severity-low';
                 return 'severity-none';
             }
-        
+
             function formatDate(dateStr) {
                 if (!dateStr) return '—';
                 try {
@@ -446,7 +448,7 @@ async def home():
                     return d.toLocaleDateString('ru-RU', { year: 'numeric', month: 'short', day: 'numeric' });
                 } catch { return dateStr; }
             }
-        
+
             // Получить конфиг из /api/config
             async function fetchConfig() {
                 try {
@@ -465,19 +467,19 @@ async def home():
                     document.getElementById('configStatusText').textContent = 'Ошибка';
                 }
             }
-        
+
             // Загрузка CVE из API
             async function fetchCVE(page = 1) {
                 const search = currentFilter.search.trim();
                 const severity = currentFilter.severity;
-        
+
                 const params = new URLSearchParams({
                     page: page,
                     limit: pageSize
                 });
                 if (search) params.append('search', search);
                 if (severity) params.append('severity', severity);
-        
+
                 try {
                     const resp = await fetch(`${API_BASE}/api/cves?${params}`);
                     if (!resp.ok) throw new Error('Ошибка загрузки CVE');
@@ -489,7 +491,7 @@ async def home():
                     throw error;
                 }
             }
-        
+
             // ---------- Отрисовка таблицы ----------
             function renderTable(data) {
                 if (!data || data.length === 0) {
@@ -500,20 +502,25 @@ async def home():
                     totalCountInfo.textContent = `Всего записей: 0`;
                     return;
                 }
-        
+
                 let html = '';
                 data.forEach(item => {
                     const cveId = item.cveMetadata?.cveId || item._id || '—';
                     const desc = item.containers?.cna?.descriptions?.[0]?.value || 'Нет описания';
-                    const severity = item.containers?.cna?.metrics?.[0]?.cvssV3_1?.baseSeverity || 'NONE';
+                    const severity = item.severity_info?.severity || 'NONE';
+                    const score = item.severity_info?.score || 0;
+                    const version = item.severity_info?.version || '';
                     const severityClass = getSeverityClass(severity);
                     const published = formatDate(item.cveMetadata?.datePublished);
                     const status = item.cveMetadata?.state || '—';
-        
+
                     html += `<tr>
                         <td><span class="cve-id">${cveId}</span></td>
                         <td><div class="desc-preview" title="${desc.replace(/"/g, '&quot;')}">${desc}</div></td>
-                        <td><span class="severity-badge ${severityClass}">${severity}</span></td>
+                        <td>
+                            <span class="severity-badge ${severityClass}">${severity}</span>
+                            ${score ? `<span style="font-size:11px;color:#64748b;display:block;">Score: ${score}</span>` : ''}
+                        </td>
                         <td>${published}</td>
                         <td><span class="status-badge">${status}</span></td>
                     </tr>`;
@@ -521,14 +528,14 @@ async def home():
                 tbody.innerHTML = html;
                 totalCountInfo.textContent = `Всего записей: ${totalRecords}`;
             }
-        
+
             // ---------- Обновить страницу ----------
             async function refreshTable() {
                 tbody.innerHTML = `<tr><td colspan="5" class="empty-state">
                     <i class="fas fa-spinner fa-pulse"></i>
                     <div>Загрузка...</div>
                 </td></tr>`;
-        
+
                 try {
                     const result = await fetchCVE(currentPage);
                     renderTable(result.items);
@@ -544,7 +551,7 @@ async def home():
                     </td></tr>`;
                 }
             }
-        
+
             // ---------- Обработчики ----------
             applyBtn.addEventListener('click', () => {
                 currentFilter.search = searchInput.value;
@@ -552,7 +559,7 @@ async def home():
                 currentPage = 1;
                 refreshTable();
             });
-        
+
             resetBtn.addEventListener('click', () => {
                 searchInput.value = '';
                 severityFilter.value = '';
@@ -561,30 +568,105 @@ async def home():
                 currentPage = 1;
                 refreshTable();
             });
-        
+
             prevBtn.addEventListener('click', () => {
                 if (currentPage > 1) {
                     currentPage--;
                     refreshTable();
                 }
             });
-        
+
             nextBtn.addEventListener('click', () => {
                 currentPage++;
                 refreshTable();
             });
-        
+
             // ---------- Инициализация ----------
             async function init() {
                 await fetchConfig();
                 await refreshTable();
             }
-        
+
             init();
         </script>
         </body>
         </html>
     """
+
+@app.get("/api/get_severity_score/{baseScore}")
+def get_severity_from_score(baseScore):
+    """Определяет уровень серьезности на основе baseScore"""
+    if baseScore is None:
+        return 'UNKNOWN'
+    
+    if baseScore == 0.0:
+        return 'NONE'
+    elif baseScore < 4.0:
+        return 'LOW'
+    elif baseScore < 7.0:
+        return 'MEDIUM'
+    elif baseScore < 9.0:
+        return 'HIGH'
+    else:
+        return 'CRITICAL'
+
+@app.get("/api/get_cve_severity/{cve_item}")
+def get_cve_severity(cve_item):
+    """
+    Извлекает максимальный baseScore из всех доступных версий CVSS
+    Ищет как в cna, так и в adp метриках
+    """
+    all_scores = []
+    priority_versions = ['cvssV4_0', 'cvssV3_1', 'cvssV3_0', 'cvssV2_0']
+    
+    # Проверяем в cna метриках
+    metrics = cve_item.get('containers', {}).get('cna', {}).get('metrics', [])
+    for metric in metrics:
+        for version in priority_versions:
+            if version in metric:
+                cvss_data = metric[version]
+                base_score = cvss_data.get('baseScore')
+                if base_score is not None:
+                    all_scores.append({
+                        'score': float(base_score),
+                        'version': version.replace('cvss', 'CVSS ').replace('_', '.'),
+                        'source': 'cna'
+                    })
+    
+    # Проверяем в adp метриках
+    adp_metrics = cve_item.get('containers', {}).get('adp', [])
+    for adp_item in adp_metrics:
+        metrics = adp_item.get('metrics', [])
+        for metric in metrics:
+            for version in priority_versions:
+                if version in metric:
+                    cvss_data = metric[version]
+                    base_score = cvss_data.get('baseScore')
+                    if base_score is not None:
+                        all_scores.append({
+                            'score': float(base_score),
+                            'version': version.replace('cvss', 'CVSS ').replace('_', '.'),
+                            'source': 'adp'
+                        })
+    
+    # Если есть оценки, берем максимальную
+    if all_scores:
+        max_score_item = max(all_scores, key=lambda x: x['score'])
+        return {
+            'score': max_score_item['score'],
+            'severity': get_severity_from_score(max_score_item['score']),
+            'version': max_score_item['version'],
+            'source': max_score_item['source'],
+            'all_scores': all_scores  # опционально: все найденные оценки
+        }
+    
+    return {
+        'score': None,
+        'severity': 'UNKNOWN',
+        'version': None,
+        'source': None,
+        'all_scores': []
+    }
 
 @app.get("/api/config")
 async def get_config():
@@ -597,6 +679,7 @@ async def get_config():
         }
     }
 
+@mcp.tool()
 @app.get("/api/cves")
 async def get_cves(
     page: int = Query(1, ge=1, description="Номер страницы"),
@@ -608,7 +691,6 @@ async def get_cves(
     Получить список CVE из MongoDB с пагинацией и фильтрацией
     """
     try:
-        # Проверяем подключение к БД
         if base is None:
             return JSONResponse(
                 status_code=503,
@@ -622,34 +704,133 @@ async def get_cves(
                 }
             )
 
-        # Выбираем коллекцию CVE
         collection = base["CVE"]
+    
+        pipeline = []
         
-        # Строим фильтр для поиска
-        query = {}
-        
-        # Поиск по тексту
         if search and search.strip():
             search_term = search.strip()
-            query["$or"] = [
-                {"cveMetadata.cveId": {"$regex": search_term, "$options": "i"}},
-                {"containers.cna.descriptions.value": {"$regex": search_term, "$options": "i"}}
-            ]
+            pipeline.append({
+                "$match": {
+                    "$or": [
+                        {"cveMetadata.cveId": {"$regex": search_term, "$options": "i"}},
+                        {"containers.cna.descriptions.value": {"$regex": search_term, "$options": "i"}}
+                    ]
+                }
+            })
         
-        # Фильтр по уровню опасности
+        pipeline.append({
+            "$addFields": {
+                "max_cvss_score": {
+                    "$max": {
+                        "$concatArrays": [
+                            {
+                                "$map": {
+                                    "input": "$containers.cna.metrics",
+                                    "as": "metric",
+                                    "in": {
+                                        "$max": [
+                                            "$$metric.cvssV4_0.baseScore",
+                                            "$$metric.cvssV3_1.baseScore",
+                                            "$$metric.cvssV3_0.baseScore",
+                                            "$$metric.cvssV2_0.baseScore"
+                                        ]
+                                    }
+                                }
+                            },
+                            {
+                                "$reduce": {
+                                    "input": "$containers.adp",
+                                    "initialValue": [],
+                                    "in": {
+                                        "$concatArrays": [
+                                            "$$value",
+                                            {
+                                                "$map": {
+                                                    "input": "$$this.metrics",
+                                                    "as": "adp_metric",
+                                                    "in": {
+                                                        "$max": [
+                                                            "$$adp_metric.cvssV4_0.baseScore",
+                                                            "$$adp_metric.cvssV3_1.baseScore",
+                                                            "$$adp_metric.cvssV3_0.baseScore",
+                                                            "$$adp_metric.cvssV2_0.baseScore"
+                                                        ]
+                                                    }
+                                                }
+                                            }
+                                        ]
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                }
+            }
+        })
+
         if severity and severity.strip():
             severity_upper = severity.upper()
-            query["containers.cna.metrics.cvssV3_1.baseSeverity"] = severity_upper
+            severity_ranges = {
+                'NONE': (0.0, 0.0),
+                'LOW': (0.1, 3.9),
+                'MEDIUM': (4.0, 6.9),
+                'HIGH': (7.0, 8.9),
+                'CRITICAL': (9.0, 10.0),
+                'UNKNOWN': (None, None)
+            }
+            
+            if severity_upper in severity_ranges:
+                min_score, max_score = severity_ranges[severity_upper]
+                if severity_upper == 'NONE':
+                    pipeline.append({
+                        "$match": {"max_cvss_score": None}
+                    })
+                elif min_score == max_score:
+                    pipeline.append({
+                        "$match": {"max_cvss_score": min_score}
+                    })
+                else:
+                    pipeline.append({
+                        "$match": {
+                            "max_cvss_score": {"$gte": min_score, "$lte": max_score}
+                        }
+                    })
         
-        # Получаем общее количество документов
-        total = await collection.count_documents(query)
+        pipeline.append({
+            "$addFields": {
+                "severity_info": {
+                    "score": "$max_cvss_score",
+                    "severity": {
+                        "$switch": {
+                            "branches": [
+                                {"case": {"$eq": ["$max_cvss_score", None]}, "then": "UNKNOWN"},
+                                {"case": {"$eq": ["$max_cvss_score", 0.0]}, "then": "NONE"},
+                                {"case": {"$lt": ["$max_cvss_score", 4.0]}, "then": "LOW"},
+                                {"case": {"$lt": ["$max_cvss_score", 7.0]}, "then": "MEDIUM"},
+                                {"case": {"$lt": ["$max_cvss_score", 9.0]}, "then": "HIGH"},
+                            ],
+                            "default": "CRITICAL"
+                        }
+                    }
+                }
+            }
+        })
         
-        # Получаем данные с пагинацией
-        skip = (page - 1) * limit
-        cursor = collection.find(query).skip(skip).limit(limit)
+        pipeline.append({"$skip": (page - 1) * limit})
+        pipeline.append({"$limit": limit})
+        
+        cursor = collection.aggregate(pipeline)
         items = await cursor.to_list(length=limit)
         
-        # Преобразуем ObjectId в строку для JSON
+        count_pipeline = pipeline.copy()
+        count_pipeline = [stage for stage in count_pipeline if "$skip" not in stage and "$limit" not in stage]
+        count_pipeline.append({"$count": "total"})
+        
+        count_cursor = collection.aggregate(count_pipeline)
+        count_result = await count_cursor.to_list(length=1)
+        total = count_result[0]["total"] if count_result else 0
+        
         for item in items:
             if "_id" in item:
                 item["_id"] = str(item["_id"])
@@ -708,6 +889,7 @@ async def get_db_status():
             "message": f"Ошибка: {str(e)}"
         }
 
+@mcp.tool()
 @app.get("/api/cve/{cve_id}")
 async def get_cve_by_id(cve_id: str):
     """Получить конкретную CVE по ID"""
@@ -719,7 +901,6 @@ async def get_cve_by_id(cve_id: str):
             )
         
         collection = base["CVE"]
-        # Ищем по cveId
         doc = await collection.find_one({"cveMetadata.cveId": cve_id})
         
         if not doc:
@@ -728,9 +909,11 @@ async def get_cve_by_id(cve_id: str):
                 content={"status": False, "message": f"CVE {cve_id} не найдена"}
             )
         
-        # Преобразуем ObjectId
         if "_id" in doc:
             doc["_id"] = str(doc["_id"])
+        
+        severity_info = get_cve_severity(doc)
+        doc["severity_info"] = severity_info
         
         return {
             "status": True,
