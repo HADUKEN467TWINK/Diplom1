@@ -119,7 +119,6 @@ async def clone_bdu_xml_in_mongo(filename_bdu_xml: str):
                 "Новых документов": successful_creates,
                 "Обновлённых документов": successful_updates,
                 "Ошибок": errors,
-                "Предупреждение": "Структура файлов БДУ могла быть изменена авторами. Проверьте структуру полей в файлах."
             }
         }
     return {

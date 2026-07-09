@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVE/BDU Загрузка в базу данных из директории</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-top: 10px;
+            background: #4CAF50;
+            color: white;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+
+        .card-header h2 {
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .method-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: white;
+        }
+
+        .method-post {
+            background: #4CAF50;
+        }
+
+        .method-get {
+            background: #2196F3;
+        }
+
+        .card-body {
+            color: #666;
+        }
+
+        .card-body p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-post {
+            background: #4CAF50;
+        }
+
+        .btn-post:hover {
+            background: #388E3C;
+            transform: scale(1.02);
+        }
+
+        .btn-get {
+            background: #2196F3;
+        }
+
+        .btn-get:hover {
+            background: #1976D2;
+            transform: scale(1.02);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow: auto;
+            display: none;
+        }
+
+        .result-container.show {
+            display: block;
+        }
+
+        .result-container pre {
+            margin: 0;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
+
+        .file-info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border-left: 4px solid #2196F3;
+        }
+
+        .file-info .file-item {
+            padding: 5px 0;
+            font-size: 0.9em;
+        }
+
+        .file-info .file-label {
+            font-weight: bold;
+            color: #1976D2;
+        }
+
+        .status-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .status-text {
+            font-weight: 600;
+        }
+
+        .status-ready {
+            color: #4CAF50;
+        }
+
+        .status-loading {
+            color: #FF9800;
+        }
+
+        .status-error {
+            color: #d32f2f;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CVE/BDU Загрузка из директории в базу данных</h1>
+            <p>Загрузка данных CVE и БДУ из файлов в MongoDB</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Загрузить</h2>
+                </div>
+                <div class="card-body">
+                    <p>Загружает данные CVE и БДУ из архивов в MongoDB</p>
+                    <div class="file-info">
+                        <div class="file-item">
+                            <span class="file-label">Файл CVE:</span>
+                            <span id="cveFileName">Не указан</span>
+                        </div>
+                        <div class="file-item">
+                            <span class="file-label">Файл BDU:</span>
+                            <span id="bduFileName">Не указан</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-post" onclick="callAPI('POST', '/', 'result1')">
+                        Загрузить базу
+                    </button>
+                    <div id="result1" class="result-container"><pre></pre></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Конфигурация</h2>
+                </div>
+                <div class="card-body">
+                    <p>Просмотр текущей конфигурации из Redis</p>
+                    <button class="btn btn-get" onclick="callAPI('GET', '/config', 'result2')">
+                        Показать конфигурацию
+                    </button>
+                    <div id="result2" class="result-container"><pre></pre></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div>
+                <span class="status-text">Статус:</span>
+                <span id="statusText" class="status-ready">Готов к работе</span>
+            </div>
+            <div>
+                <span class="status-text">Время:</span>
+                <span id="timeText"></span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const timeEl = document.getElementById('timeText');
+            if (timeEl) {
+                timeEl.textContent = now.toLocaleString('ru-RU');
+            }
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        async function loadConfig() {
+            try {
+                const response = await fetch('/config');
+                const data = await response.json();
+                if (data.status && data.config) {
+                    const cveFile = document.getElementById('cveFileName');
+                    const bduFile = document.getElementById('bduFileName');
+                    if (cveFile) cveFile.textContent = data.config.filename_cve || 'Не указан';
+                    if (bduFile) bduFile.textContent = data.config.filename_bdu || 'Не указан';
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки конфигурации:', error);
+            }
+        }
+
+        async function callAPI(method, endpoint, resultId) {
+            const resultDiv = document.getElementById(resultId);
+            if (!resultDiv) {
+                console.error('Element not found:', resultId);
+                return;
+            }
+            
+            const pre = resultDiv.querySelector('pre');
+            if (!pre) {
+                console.error('Pre element not found in:', resultId);
+                return;
+            }
+            
+            const button = resultDiv.parentElement.querySelector('.btn');
+            const statusText = document.getElementById('statusText');
+
+            resultDiv.classList.add('show');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = 'Загрузка...';
+            }
+
+            pre.textContent = '';
+
+            if (statusText) {
+                statusText.textContent = 'Выполняется запрос...';
+                statusText.className = 'status-text status-loading';
+            }
+
+            try {
+                const url = window.location.origin + endpoint;
+                console.log('Calling:', method, url);
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+
+                const data = await response.json();
+                console.log('Response:', data);
+
+                let output = '';
+
+                if (endpoint === '/config') {
+                    if (data.status && data.config) {
+                        output = 'Текущая конфигурация:\\n\\n';
+                        for (const [key, value] of Object.entries(data.config)) {
+                            output += `  ${key}: ${value || '(не задано)'}\\n`;
+                        }
+                    } else {
+                        output = JSON.stringify(data, null, 2);
+                    }
+                } else if (Array.isArray(data)) {
+                    output = 'Результаты загрузки:\\n\\n';
+                    data.forEach((item, index) => {
+                        const type = index === 0 ? 'CVE' : 'BDU';
+                        output += `${type}:\\n`;
+                        if (item.status) {
+                            output += `${item.message}\\n`;
+                            if (item.statistics) {
+                                output += 'Статистика:\\n';
+                                for (const [key, value] of Object.entries(item.statistics)) {
+                                    output += `${key}: ${value}\\n`;
+                                }
+                            }
+                        } else {
+                            output += `${item.message || 'Ошибка'}\\n`;
+                        }
+                        output += '\\n';
+                    });
+                } else if (data.status !== undefined && data.statistics) {
+                    output = 'Статистика загрузки:\\n\\n';
+                    output += `Статус: ${data.status ? 'Успешно' : 'Ошибка'}\\n`;
+                    output += `Сообщение: ${data.message || 'Нет данных'}\\n\\n`;
+
+                    if (data.statistics) {
+                        output += 'Детали:\\n';
+                        for (const [key, value] of Object.entries(data.statistics)) {
+                            output += `${key}: ${value}\\n`;
+                        }
+                    }
+                } else {
+                    output = JSON.stringify(data, null, 2);
+                }
+
+                pre.textContent = output;
+
+                if (statusText) {
+                    if (response.ok) {
+                        statusText.textContent = 'Готов к работе';
+                        statusText.className = 'status-text status-ready';
+                    } else {
+                        statusText.textContent = 'Ошибка запроса';
+                        statusText.className = 'status-text status-error';
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                pre.textContent = 'Ошибка: ' + error.message + '\\n\\nПроверьте, запущен ли сервер.';
+                if (statusText) {
+                    statusText.textContent = 'Ошибка соединения';
+                    statusText.className = 'status-text status-error';
+                }
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = method === 'GET' ? 'Выполнить' : 'Загрузить базу';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, loading config...');
+            loadConfig();
+            setTimeout(function() {
+                callAPI('GET', '/config', 'result2');
+            }, 500);
+        });
+    </script>
+</body>
+</html>

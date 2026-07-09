@@ -284,7 +284,6 @@ async def home():
                     <div class="card">
                         <div class="card-header">
                             <h2>Обновить базу</h2>
-                            <span class="method-badge method-put">PUT</span>
                         </div>
                         <div class="card-body">
                             <p>Обновляет базу данных MongoDB новыми записями CVE и БДУ прямо из Интернета</p>
@@ -296,7 +295,6 @@ async def home():
                     <div class="card">
                         <div class="card-header">
                             <h2>Конфигурация</h2>
-                            <span class="method-badge method-get">GET</span>
                         </div>
                         <div class="card-body">
                             <p>Просмотр текущей конфигурации из Redis</p>
