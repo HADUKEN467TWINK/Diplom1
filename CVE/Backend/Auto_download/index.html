@@ -213,6 +213,7 @@
     </style>
 </head>
 <body>
+    
     <div class="container">
         <div class="header">
             <h1>CVE/BDU Скачать бесплатно</h1>
@@ -220,6 +221,24 @@
         </div>
 
         <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Скачать в браузере</h2>
+                    <span class="method-badge method-get">GET</span>
+                </div>
+                <div class="card-body">
+                    <p>Открывает страницу в браузере для скачивания файлов CVE и BDU напрямую в папку "Загрузки"</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-get" onclick="window.open('/download-cve-browser', '_blank')" style="flex: 1;">
+                            CVE
+                        </button>
+                        <button class="btn btn-get" onclick="window.open('/download-bdu-browser', '_blank')" style="flex: 1; background: #f5576c;">
+                            BDU
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="card">
                 <div class="card-header">
                     <h2>Скачать файлы</h2>
@@ -265,6 +284,7 @@
             </div>
         </div>
     </div>
+
 
     <script>
         function updateTime() {

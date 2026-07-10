@@ -78,10 +78,56 @@ async def download_url(repo_url: str, temp_path: Path) -> Path:
     except Exception as e:
         raise Exception(f"Ошибка при скачивании: {str(e)}")
 
-async def update_cve_in_mongo(update_url: str):
+async def update_cve_in_mongo(update_url: str, use_browser: bool = False):
+    """
+    Обновляет базу данных CVE из указанного URL
+    
+    Args:
+        update_url: URL для скачивания
+        use_browser: Если True - открывает ссылку в браузере для ручного скачивания,
+                    Если False - скачивает напрямую через код
+    """
     with tempfile.TemporaryDirectory() as temp_file:
         temp_path = Path(temp_file)
-        zip_path = await download_url(update_url, temp_path)
+        
+        if use_browser:
+            # Режим через браузер
+            import webbrowser
+            import shutil
+            
+            print(f"Открываю ссылку в браузере: {update_url}")
+            webbrowser.open(update_url)
+            
+            # Создаем поддиректорию для ручной загрузки
+            manual_download_path = temp_path / "manual_download"
+            manual_download_path.mkdir(exist_ok=True)
+            
+            print(f"\nПожалуйста, скачайте файл вручную в следующую директорию:")
+            print(f"  {manual_download_path.absolute()}")
+            print("\nОжидаемые имена файлов:")
+            print("  - download_cve.zip (для CVE)")
+            print("\nПосле скачивания файла нажмите Enter для продолжения...")
+            
+            input()
+            
+            # Ищем скачанный файл
+            downloaded_files = list(manual_download_path.glob("*"))
+            if not downloaded_files:
+                raise Exception("Файл не найден в директории для ручной загрузки")
+            
+            # Берем первый найденный файл
+            zip_path = downloaded_files[0]
+            print(f"Найден файл: {zip_path.name}, размер: {zip_path.stat().st_size} байт")
+            
+            # Перемещаем файл в основную временную директорию
+            target_path = temp_path / zip_path.name
+            shutil.move(str(zip_path), str(target_path))
+            zip_path = target_path
+            
+        else:
+            # Прямое скачивание
+            zip_path = await download_url(update_url, temp_path)
+        
         extract_path = temp_path / "extracted"
         with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(extract_path)
@@ -91,6 +137,7 @@ async def update_cve_in_mongo(update_url: str):
         successful_creates = 0
         successful_updates = 0
         errors = 0
+        
         for file_path in extract_path.rglob("CVE*.json"):
             if file_path.is_file():
                 try:
@@ -115,6 +162,7 @@ async def update_cve_in_mongo(update_url: str):
                 except Exception as e:
                     print(f"Ошибка в {file_path.name}: {e}")
                     errors += 1
+                    
         total_processed = successful_updates + successful_creates
         if total_processed == 0:
             return {
@@ -132,12 +180,59 @@ async def update_cve_in_mongo(update_url: str):
             }
         }
 
-async def update_bdu_in_mongo(update_url: str):
+
+async def update_bdu_in_mongo(update_url: str, use_browser: bool = False):
+    """
+    Обновляет базу данных BDU из указанного URL
+    
+    Args:
+        update_url: URL для скачивания
+        use_browser: Если True - открывает ссылку в браузере для ручного скачивания,
+                    Если False - скачивает напрямую через код
+    """
     len_document = 20
     excp_change = True
     with tempfile.TemporaryDirectory() as temp_file:
         temp_path = Path(temp_file)
-        downloaded_path = await download_url(update_url, temp_path)
+        
+        if use_browser:
+            # Режим через браузер
+            import webbrowser
+            import shutil
+            
+            print(f"Открываю ссылку в браузере: {update_url}")
+            webbrowser.open(update_url)
+            
+            # Создаем поддиректорию для ручной загрузки
+            manual_download_path = temp_path / "manual_download"
+            manual_download_path.mkdir(exist_ok=True)
+            
+            print(f"\nПожалуйста, скачайте файл вручную в следующую директорию:")
+            print(f"  {manual_download_path.absolute()}")
+            print("\nОжидаемые имена файлов:")
+            print("  - download_bdu.xml (для BDU)")
+            print("\nПосле скачивания файла нажмите Enter для продолжения...")
+            
+            input()
+            
+            # Ищем скачанный файл
+            downloaded_files = list(manual_download_path.glob("*"))
+            if not downloaded_files:
+                raise Exception("Файл не найден в директории для ручной загрузки")
+            
+            # Берем первый найденный файл
+            downloaded_path = downloaded_files[0]
+            print(f"Найден файл: {downloaded_path.name}, размер: {downloaded_path.stat().st_size} байт")
+            
+            # Перемещаем файл в основную временную директорию
+            target_path = temp_path / downloaded_path.name
+            shutil.move(str(downloaded_path), str(target_path))
+            downloaded_path = target_path
+            
+        else:
+            # Прямое скачивание
+            downloaded_path = await download_url(update_url, temp_path)
+        
         if downloaded_path.suffix.lower() == '.zip':
             # Обработка ZIP
             zip_path = downloaded_path
@@ -147,12 +242,15 @@ async def update_bdu_in_mongo(update_url: str):
             xml_files = next(extract_path.rglob("*.xml"), None)
         else:
             xml_files = downloaded_path
+            
         if not xml_files:
             return {"status": False, "message": "XML файлов не найдено"}
+            
         tree = etree.parse(xml_files)
         root = tree.getroot()
         vulnerabilities = []
         vul_all = root.findall("vul")
+        
         for vul in vul_all:
             doc = {}
             for i in atributs_simple:
@@ -185,6 +283,7 @@ async def update_bdu_in_mongo(update_url: str):
         successful_creates = 0
         successful_updates = 0
         errors = 0
+        
         for elem in vulnerabilities:
             try:
                 if "_id" not in elem:
@@ -203,6 +302,7 @@ async def update_bdu_in_mongo(update_url: str):
             except Exception as e:
                 print(f"Ошибка при вставке {elem.get('_id', 'unknown')}: {e}")
                 errors += 1
+                
         if total_files == 0 and successful_updates == 0:
             return {
                 "status": False,

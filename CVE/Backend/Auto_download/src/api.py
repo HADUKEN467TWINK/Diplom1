@@ -1,10 +1,11 @@
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 import redis.asyncio as redis
 from src.help_func import update_cve_in_mongo, update_bdu_in_mongo, download_url
 from pydantic import BaseModel, HttpUrl
 from pathlib import Path
 import os
+from fastapi import Query
 
 router = APIRouter()
 
@@ -48,402 +49,705 @@ async def get_config_from_redis():
 @router.get("/", response_class=HTMLResponse)
 async def home():
     html_content = """
-        <!DOCTYPE html>
-        <html lang="ru">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>CVE/BDU Управление базами данных</title>
-            <style>
-                * {
-                    margin: 0;
-                    padding: 0;
-                    box-sizing: border-box;
-                }
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CVE/BDU Управление базами данных</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-                body {
-                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    min-height: 100vh;
-                    padding: 20px;
-                }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
 
-                .container {
-                    max-width: 1200px;
-                    margin: 0 auto;
-                }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
 
-                .header {
-                    background: white;
-                    border-radius: 15px;
-                    padding: 30px;
-                    margin-bottom: 30px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                }
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
 
-                .header h1 {
-                    color: #333;
-                    font-size: 2.5em;
-                    margin-bottom: 10px;
-                }
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
 
-                .header p {
-                    color: #666;
-                    font-size: 1.1em;
-                }
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
 
-                .status-badge {
-                    display: inline-block;
-                    padding: 5px 15px;
-                    border-radius: 20px;
-                    font-size: 0.9em;
-                    font-weight: bold;
-                    margin-top: 10px;
-                    background: #4CAF50;
-                    color: white;
-                }
+        .status-badge {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            margin-top: 10px;
+            background: #4CAF50;
+            color: white;
+        }
 
-                .grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-                    gap: 25px;
-                    margin-bottom: 30px;
-                }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
 
-                .card {
-                    background: white;
-                    border-radius: 15px;
-                    padding: 25px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    transition: transform 0.3s ease;
-                }
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s ease;
+        }
 
-                .card:hover {
-                    transform: translateY(-5px);
-                }
+        .card:hover {
+            transform: translateY(-5px);
+        }
 
-                .card-header {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 20px;
-                    padding-bottom: 15px;
-                    border-bottom: 2px solid #f0f0f0;
-                }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
 
-                .card-header h2 {
-                    color: #333;
-                    font-size: 1.3em;
-                }
+        .card-header h2 {
+            color: #333;
+            font-size: 1.3em;
+        }
 
-                .method-badge {
-                    padding: 4px 12px;
-                    border-radius: 12px;
-                    font-size: 0.8em;
-                    font-weight: bold;
-                    color: white;
-                }
+        .method-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+            color: white;
+        }
 
-                .method-get {
-                    background: #2196F3;
-                }
+        .method-get {
+            background: #2196F3;
+        }
 
-                .method-put {
-                    background: #FF9800;
-                }
+        .method-put {
+            background: #FF9800;
+        }
 
-                .card-body {
-                    color: #666;
-                }
+        .card-body {
+            color: #666;
+        }
 
-                .card-body p {
-                    margin-bottom: 15px;
-                    line-height: 1.6;
-                }
+        .card-body p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
 
-                .btn {
-                    padding: 10px 25px;
-                    border: none;
-                    border-radius: 8px;
-                    font-size: 1em;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    color: white;
-                    width: 100%;
-                }
+        .btn {
+            padding: 10px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+            width: 100%;
+        }
 
-                .btn-get {
-                    background: #2196F3;
-                }
+        .btn-get {
+            background: #2196F3;
+        }
 
-                .btn-get:hover {
-                    background: #1976D2;
-                    transform: scale(1.02);
-                }
+        .btn-get:hover {
+            background: #1976D2;
+            transform: scale(1.02);
+        }
 
-                .btn-put {
-                    background: #FF9800;
-                }
+        .btn-put {
+            background: #FF9800;
+        }
 
-                .btn-put:hover {
-                    background: #F57C00;
-                    transform: scale(1.02);
-                }
+        .btn-put:hover {
+            background: #F57C00;
+            transform: scale(1.02);
+        }
 
-                .btn:disabled {
-                    opacity: 0.6;
-                    cursor: not-allowed;
-                    transform: none;
-                }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
 
-                .result-container {
-                    background: #f8f9fa;
-                    border-radius: 10px;
-                    padding: 15px;
-                    margin-top: 20px;
-                    max-height: 400px;
-                    overflow: auto;
-                    display: none;
-                }
+        .result-container {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow: auto;
+            display: none;
+        }
 
-                .result-container.show {
-                    display: block;
-                }
+        .result-container.show {
+            display: block;
+        }
 
-                .result-container pre {
-                    margin: 0;
-                    font-size: 0.9em;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
-                    color: #333;
-                    font-family: 'Courier New', monospace;
-                }
+        .result-container pre {
+            margin: 0;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            color: #333;
+            font-family: 'Courier New', monospace;
+        }
 
-                .status-bar {
-                    background: white;
-                    border-radius: 15px;
-                    padding: 20px 30px;
-                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    flex-wrap: wrap;
-                }
+        .status-bar {
+            background: white;
+            border-radius: 15px;
+            padding: 20px 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
-                .status-text {
-                    font-weight: 600;
-                }
+        .status-text {
+            font-weight: 600;
+        }
 
-                .status-ready {
-                    color: #4CAF50;
-                }
+        .status-ready {
+            color: #4CAF50;
+        }
 
-                .status-loading {
-                    color: #FF9800;
-                }
+        .status-loading {
+            color: #FF9800;
+        }
 
-                .status-error {
-                    color: #d32f2f;
-                }
+        .status-error {
+            color: #d32f2f;
+        }
 
-                @media (max-width: 768px) {
-                    .header h1 {
-                        font-size: 1.8em;
-                    }
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
 
-                    .grid {
-                        grid-template-columns: 1fr;
-                    }
+            .grid {
+                grid-template-columns: 1fr;
+            }
 
-                    .card {
-                        padding: 20px;
-                    }
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <h1>CVE/BDU Скачать бесплатно</h1>
-                    <p>Скачивание и обновление баз данных уязвимостей CVE и БДУ</p>
+            .card {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <div class="container">
+        <div class="header">
+            <h1>CVE/BDU Скачать бесплатно</h1>
+            <p>Скачивание и обновление баз данных уязвимостей CVE и БДУ</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="card-header">
+                    <h2>Скачать в браузере</h2>
+                    <span class="method-badge method-get">GET</span>
                 </div>
-
-                <div class="grid">
-                    <div class="card">
-                        <div class="card-header">
-                            <h2>Скачать файлы</h2>
-                        </div>
-                        <div class="card-body">
-                            <p>Скачивает актуальные файлы CVE и БДУ из интернета в папку <code>__downloading_base___</code></p>
-                            <button class="btn btn-get" onclick="callAPI('GET', '/rep', 'result1')">Скачать файлы</button>
-                            <div id="result1" class="result-container"><pre></pre></div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h2>Обновить базу</h2>
-                        </div>
-                        <div class="card-body">
-                            <p>Обновляет базу данных MongoDB новыми записями CVE и БДУ прямо из Интернета</p>
-                            <button class="btn btn-put" onclick="callAPI('PUT', '/rep', 'result2')">Обновить базу</button>
-                            <div id="result2" class="result-container"><pre></pre></div>
-                        </div>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-header">
-                            <h2>Конфигурация</h2>
-                        </div>
-                        <div class="card-body">
-                            <p>Просмотр текущей конфигурации из Redis</p>
-                            <button class="btn btn-get" onclick="callAPI('GET', '/config', 'result3')">Показать конфигурацию</button>
-                            <div id="result3" class="result-container"><pre></pre></div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="status-bar">
-                    <div>
-                        <span class="status-text">Статус:</span>
-                        <span id="statusText" class="status-ready">Готов к работе</span>
-                    </div>
-                    <div>
-                        <span class="status-text">Время:</span>
-                        <span id="timeText"></span>
+                <div class="card-body">
+                    <p>Открывает страницу в браузере для скачивания файлов CVE и BDU напрямую в папку "Загрузки"</p>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-get" onclick="window.open('/download-cve-browser', '_blank')" style="flex: 1;">
+                            CVE
+                        </button>
+                        <button class="btn btn-get" onclick="window.open('/download-bdu-browser', '_blank')" style="flex: 1; background: #f5576c;">
+                            BDU
+                        </button>
                     </div>
                 </div>
             </div>
 
-            <script>
-                function updateTime() {
-                    const now = new Date();
-                    const timeEl = document.getElementById('timeText');
-                    if (timeEl) {
-                        timeEl.textContent = now.toLocaleString('ru-RU');
+            <div class="card">
+                <div class="card-header">
+                    <h2>Скачать файлы</h2>
+                </div>
+                <div class="card-body">
+                    <p>Скачивает актуальные файлы CVE и БДУ из интернета в папку <code>__downloading_base___</code></p>
+                    <button class="btn btn-get" onclick="callAPI('GET', '/rep', 'result1')">Скачать файлы</button>
+                    <div id="result1" class="result-container"><pre></pre></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Обновить базу</h2>
+                </div>
+                <div class="card-body">
+                    <p>Обновляет базу данных MongoDB новыми записями CVE и БДУ прямо из Интернета</p>
+                    <button class="btn btn-put" onclick="callAPI('PUT', '/rep', 'result2')">Обновить базу</button>
+                    <div id="result2" class="result-container"><pre></pre></div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Конфигурация</h2>
+                </div>
+                <div class="card-body">
+                    <p>Просмотр текущей конфигурации из Redis</p>
+                    <button class="btn btn-get" onclick="callAPI('GET', '/config', 'result3')">Показать конфигурацию</button>
+                    <div id="result3" class="result-container"><pre></pre></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="status-bar">
+            <div>
+                <span class="status-text">Статус:</span>
+                <span id="statusText" class="status-ready">Готов к работе</span>
+            </div>
+            <div>
+                <span class="status-text">Время:</span>
+                <span id="timeText"></span>
+            </div>
+        </div>
+    </div>
+
+
+    <script>
+        function updateTime() {
+            const now = new Date();
+            const timeEl = document.getElementById('timeText');
+            if (timeEl) {
+                timeEl.textContent = now.toLocaleString('ru-RU');
+            }
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+
+        async function callAPI(method, endpoint, resultId) {
+            const resultDiv = document.getElementById(resultId);
+            if (!resultDiv) {
+                console.error('Element not found:', resultId);
+                return;
+            }
+            
+            const pre = resultDiv.querySelector('pre');
+            if (!pre) {
+                console.error('Pre element not found in:', resultId);
+                return;
+            }
+            
+            const button = resultDiv.parentElement.querySelector('.btn');
+            const statusText = document.getElementById('statusText');
+
+            resultDiv.classList.add('show');
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = 'Загрузка...';
+            }
+
+            pre.textContent = '';
+
+            if (statusText) {
+                statusText.textContent = 'Выполняется запрос...';
+                statusText.className = 'status-text status-loading';
+            }
+
+            try {
+                const url = window.location.origin + endpoint;
+                console.log('Calling:', method, url);
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
                     }
-                }
-                updateTime();
-                setInterval(updateTime, 1000);
-
-                async function callAPI(method, endpoint, resultId) {
-                    const resultDiv = document.getElementById(resultId);
-                    if (!resultDiv) {
-                        console.error('Element not found:', resultId);
-                        return;
-                    }
-                    
-                    const pre = resultDiv.querySelector('pre');
-                    if (!pre) {
-                        console.error('Pre element not found in:', resultId);
-                        return;
-                    }
-                    
-                    const button = resultDiv.parentElement.querySelector('.btn');
-                    const statusText = document.getElementById('statusText');
-
-                    resultDiv.classList.add('show');
-                    if (button) {
-                        button.disabled = true;
-                        button.innerHTML = 'Загрузка...';
-                    }
-
-                    pre.textContent = '';
-
-                    if (statusText) {
-                        statusText.textContent = 'Выполняется запрос...';
-                        statusText.className = 'status-text status-loading';
-                    }
-
-                    try {
-                        const url = window.location.origin + endpoint;
-                        console.log('Calling:', method, url);
-
-                        const response = await fetch(url, {
-                            method: method,
-                            headers: {
-                                'Content-Type': 'application/json',
-                            }
-                        });
-
-                        const data = await response.json();
-                        console.log('Response:', data);
-
-                        let output = '';
-
-                        if (endpoint === '/config') {
-                            if (data.status && data.config) {
-                                output = 'Текущая конфигурация:\\n\\n';
-                                for (const [key, value] of Object.entries(data.config)) {
-                                    output += `${key}: ${value || '(не задано)'}\\n`;
-                                }
-                            } else {
-                                output = JSON.stringify(data, null, 2);
-                            }
-                        } else if (Array.isArray(data)) {
-                            output = 'Результаты скачивания:\\n\\n';
-                            data.forEach((item, index) => {
-                                output += `Файл ${index + 1}:\\n`;
-                                if (item.status) {
-                                    output += `${item.message}\\n`;
-                                }
-                                else {
-                                    output += `${item.message}\\n`;
-                                }
-                                output += '\\n';
-                            });
-                        } else if (data.status !== undefined && data.statistics) {
-                            output = 'Статистика обновления:\\n\\n';
-                            output += `Статус: ${data.status ? 'Успешно' : 'Ошибка'}\\n`;
-                            output += `Сообщение: ${data.message || 'Нет данных'}\\n\\n`;
-
-                            if (data.statistics) {
-                                output += 'Детали:\\n';
-                                for (const [key, value] of Object.entries(data.statistics)) {
-                                    output += `${key}: ${value}\\n`;
-                                }
-                            }
-                        } else {
-                            output = JSON.stringify(data, null, 2);
-                        }
-
-                        pre.textContent = output;
-
-                        if (statusText) {
-                            if (response.ok) {
-                                statusText.textContent = 'Готов к работе';
-                                statusText.className = 'status-text status-ready';
-                            } else {
-                                statusText.textContent = 'Ошибка запроса';
-                                statusText.className = 'status-text status-error';
-                            }
-                        }
-
-                    } catch (error) {
-                        console.error('Error:', error);
-                        pre.textContent = ' Ошибка: ' + error.message + '\\n\\nПроверьте, запущен ли сервер.';
-                        if (statusText) {
-                            statusText.textContent = ' Ошибка соединения';
-                            statusText.className = 'status-text status-error';
-                        }
-                    } finally {
-                        if (button) {
-                            button.disabled = false;
-                            button.innerHTML = method === 'GET' ? 'Выполнить' : 'Обновить';
-                        }
-                    }
-                }
-
-                document.addEventListener('DOMContentLoaded', function() {
-                    console.log('Page loaded, loading config...');
-                    setTimeout(function() {
-                        callAPI('GET', '/config', 'result3');
-                    }, 500);
                 });
-            </script>
-        </body>
-        </html>
+
+                const data = await response.json();
+                console.log('Response:', data);
+
+                let output = '';
+
+                if (endpoint === '/config') {
+                    if (data.status && data.config) {
+                        output = 'Текущая конфигурация:\\n\\n';
+                        for (const [key, value] of Object.entries(data.config)) {
+                            output += `${key}: ${value || '(не задано)'}\\n`;
+                        }
+                    } else {
+                        output = JSON.stringify(data, null, 2);
+                    }
+                } else if (Array.isArray(data)) {
+                    output = 'Результаты скачивания:\\n\\n';
+                    data.forEach((item, index) => {
+                        output += `Файл ${index + 1}:\\n`;
+                        if (item.status) {
+                            output += `${item.message}\\n`;
+                        }
+                        else {
+                            output += `${item.message}\\n`;
+                        }
+                        output += '\\n';
+                    });
+                } else if (data.status !== undefined && data.statistics) {
+                    output = 'Статистика обновления:\\n\\n';
+                    output += `Статус: ${data.status ? 'Успешно' : 'Ошибка'}\\n`;
+                    output += `Сообщение: ${data.message || 'Нет данных'}\\n\\n`;
+
+                    if (data.statistics) {
+                        output += 'Детали:\\n';
+                        for (const [key, value] of Object.entries(data.statistics)) {
+                            output += `${key}: ${value}\\n`;
+                        }
+                    }
+                } else {
+                    output = JSON.stringify(data, null, 2);
+                }
+
+                pre.textContent = output;
+
+                if (statusText) {
+                    if (response.ok) {
+                        statusText.textContent = 'Готов к работе';
+                        statusText.className = 'status-text status-ready';
+                    } else {
+                        statusText.textContent = 'Ошибка запроса';
+                        statusText.className = 'status-text status-error';
+                    }
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                pre.textContent = ' Ошибка: ' + error.message + '\\n\\nПроверьте, запущен ли сервер.';
+                if (statusText) {
+                    statusText.textContent = ' Ошибка соединения';
+                    statusText.className = 'status-text status-error';
+                }
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = method === 'GET' ? 'Выполнить' : 'Обновить';
+                }
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, loading config...');
+            setTimeout(function() {
+                callAPI('GET', '/config', 'result3');
+            }, 500);
+        });
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html_content)
+
+
+@router.get("/download-bdu-browser")
+async def download_bdu_through_browser():
+    """
+    Открывает страницу для скачивания BDU файла через браузер
+    """
+    config = await get_config_from_redis()
+    update_url_bdu = config.get("update_url_bdu")
+    
+    if not update_url_bdu:
+        return HTMLResponse(content="""
+            <html>
+                <body style="text-align:center; padding:50px; font-family:Arial;">
+                    <h1>❌ Ошибка</h1>
+                    <p>URL для BDU не настроен в конфигурации</p>
+                    <a href="/">Вернуться назад</a>
+                </body>
+            </html>
+        """)
+
+
+    # Определяем имя файла из URL
+    filename = "download_bdu.xml" if '.xml' in update_url_bdu.lower() else "download_bdu.zip"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Скачивание BDU файла</title>
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                text-align: center;
+                padding: 50px;
+                background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+                min-height: 100vh;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }}
+            .container {{
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                max-width: 500px;
+                width: 100%;
+            }}
+            .icon {{
+                font-size: 60px;
+                margin-bottom: 20px;
+            }}
+            .spinner {{
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #f5576c;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            .btn {{
+                display: inline-block;
+                padding: 12px 30px;
+                background: #f5576c;
+                color: white;
+                text-decoration: none;
+                border-radius: 8px;
+                margin-top: 20px;
+                transition: all 0.3s;
+            }}
+            .btn:hover {{
+                background: #d32f2f;
+                transform: scale(1.05);
+            }}
+            .status {{
+                margin-top: 15px;
+                padding: 10px;
+                background: #f0f0f0;
+                border-radius: 8px;
+                font-size: 14px;
+                color: #333;
+            }}
+        </style>
+        <script>
+            window.onload = function() {{
+                setTimeout(function() {{
+                    var link = document.createElement('a');
+                    link.href = '{update_url_bdu}';
+                    link.download = '{filename}';
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    document.getElementById('status').innerHTML = '✅ Скачивание началось! Файл сохраняется в папку "Загрузки"';
+                    document.getElementById('status').style.background = '#d4edda';
+                    document.getElementById('status').style.color = '#155724';
+                }}, 1000);
+            }};
+            
+            function downloadAgain() {{
+                var link = document.createElement('a');
+                link.href = '{update_url_bdu}';
+                link.download = '{filename}';
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }}
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon">📥</div>
+            <h2>Скачивание BDU файла</h2>
+            <div class="spinner"></div>
+            <p>Идет подготовка к скачиванию...</p>
+            <div id="status" class="status">⏳ Подготовка файла...</div>
+            <br>
+            <button onclick="downloadAgain()" class="btn">⬇️ Скачать еще раз</button>
+            <br><br>
+            <a href="/" style="color: #667eea; text-decoration: none;">← Вернуться назад</a>
+            <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                Файл: <strong>{filename}</strong><br>
+                Если скачивание не началось автоматически, нажмите кнопку выше.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+    return HTMLResponse(content=html_content)
+
+@router.get("/download-cve-browser")
+async def download_cve_through_browser():
+    """
+    Открывает страницу для скачивания CVE файла через браузер
+    """
+    config = await get_config_from_redis()
+    update_url_cve = config.get("update_url_cve")
+    
+    if not update_url_cve:
+        return HTMLResponse(content="""
+            <html>
+                <body style="text-align:center; padding:50px; font-family:Arial;">
+                    <h1>❌ Ошибка</h1>
+                    <p>URL для CVE не настроен в конфигурации</p>
+                    <a href="/">Вернуться назад</a>
+                </body>
+            </html>
+        """)
+    
+    # Определяем имя файла из URL
+    filename = "download_cve.zip" if '.zip' in update_url_cve.lower() else "download_cve.xml"
+    
+    html_content = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <title>Скачивание CVE файла</title>
+        <style>
+            body {{
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                text-align: center;
+                padding: 50px;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                margin: 0;
+                display: flex;
+                justify-content: center;
+                align-items: center;
+            }}
+            .container {{
+                background: white;
+                padding: 40px;
+                border-radius: 15px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                max-width: 500px;
+                width: 100%;
+            }}
+            .icon {{
+                font-size: 60px;
+                margin-bottom: 20px;
+            }}
+            .spinner {{
+                border: 4px solid #f3f3f3;
+                border-top: 4px solid #667eea;
+                border-radius: 50%;
+                width: 50px;
+                height: 50px;
+                animation: spin 1s linear infinite;
+                margin: 20px auto;
+            }}
+            @keyframes spin {{
+                0% {{ transform: rotate(0deg); }}
+                100% {{ transform: rotate(360deg); }}
+            }}
+            .btn {{
+                display: inline-block;
+                padding: 12px 30px;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 8px;
+                margin-top: 20px;
+                transition: all 0.3s;
+                border: none;
+                cursor: pointer;
+                font-size: 16px;
+            }}
+            .btn:hover {{
+                background: #764ba2;
+                transform: scale(1.05);
+            }}
+            .status {{
+                margin-top: 15px;
+                padding: 10px;
+                background: #f0f0f0;
+                border-radius: 8px;
+                font-size: 14px;
+                color: #333;
+            }}
+            .success {{
+                background: #d4edda !important;
+                color: #155724 !important;
+            }}
+        </style>
+        <script>
+            window.onload = function() {{
+                setTimeout(function() {{
+                    var link = document.createElement('a');
+                    link.href = '{update_url_cve}';
+                    link.download = '{filename}';
+                    link.target = '_blank';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    
+                    var statusEl = document.getElementById('status');
+                    statusEl.innerHTML = '✅ Скачивание началось! Файл сохраняется в папку "Загрузки"';
+                    statusEl.className = 'status success';
+                }}, 1000);
+            }};
+            
+            function downloadAgain() {{
+                var link = document.createElement('a');
+                link.href = '{update_url_cve}';
+                link.download = '{filename}';
+                link.target = '_blank';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }}
+        </script>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon">📥</div>
+            <h2>Скачивание CVE файла</h2>
+            <div class="spinner"></div>
+            <p>Идет подготовка к скачиванию...</p>
+            <div id="status" class="status">⏳ Подготовка файла...</div>
+            <br>
+            <button onclick="downloadAgain()" class="btn">⬇️ Скачать еще раз</button>
+            <br><br>
+            <a href="/" style="color: #667eea; text-decoration: none;">← Вернуться назад</a>
+            <p style="margin-top: 20px; font-size: 12px; color: #999;">
+                Файл: <strong>{filename}</strong><br>
+                Если скачивание не началось автоматически, нажмите кнопку выше.
+            </p>
+        </div>
+    </body>
+    </html>
     """
     return HTMLResponse(content=html_content)
 
@@ -461,55 +765,37 @@ async def download_base():
             "message": "URL для обновления не настроен. Проверьте конфигурацию."
         }
     
-    download_path = Path("__downloading_base___")
-    cve_file = download_path / "download_cve.zip"
-    bdu_file = download_path / "download_bdu.xml"
-    
     results = []
     
-    # Проверяем и скачиваем CVE
-    if cve_file.exists() and cve_file.stat().st_size > 0:
-        results.append({
-            "status": True,
-            "message": f"Файл CVE уже существует: {cve_file}, размер: {cve_file.stat().st_size} байт"
-        })
-    else:
-        try:
-            result = await download_url(update_url_cve, download_path)
-            if isinstance(result, dict):
-                results.append(result)
-            else:
-                results.append({
-                    "status": True,
-                    "message": f"Файл CVE успешно скачан: {result}, размер: {result.stat().st_size} байт"
-                })
-        except Exception as e:
+    try:
+        result = await update_cve_in_mongo(update_url_cve, use_browser=False)
+        if isinstance(result, dict):
+            results.append(result)
+        else:
             results.append({
-                "status": False,
-                "message": f"Ошибка скачивания CVE: {str(e)}"
+                "status": True,
+                "message": f"Файл CVE успешно скачан и обработан"
             })
+    except Exception as e:
+        results.append({
+            "status": False,
+            "message": f"Ошибка скачивания CVE: {str(e)}"
+        })
     
-    # Проверяем и скачиваем BDU
-    if bdu_file.exists() and bdu_file.stat().st_size > 0:
-        results.append({
-            "status": True,
-            "message": f"Файл BDU уже существует: {bdu_file}, размер: {bdu_file.stat().st_size} байт"
-        })
-    else:
-        try:
-            result = await download_url(update_url_bdu, download_path)
-            if isinstance(result, dict):
-                results.append(result)
-            else:
-                results.append({
-                    "status": True,
-                    "message": f"Файл BDU успешно скачан: {result}, размер: {result.stat().st_size} байт"
-                })
-        except Exception as e:
+    try:
+        result = await update_bdu_in_mongo(update_url_bdu, use_browser=False)
+        if isinstance(result, dict):
+            results.append(result)
+        else:
             results.append({
-                "status": False,
-                "message": f"Ошибка скачивания BDU: {str(e)}"
+                "status": True,
+                "message": f"Файл BDU успешно скачан и обработан"
             })
+    except Exception as e:
+        results.append({
+            "status": False,
+            "message": f"Ошибка скачивания BDU: {str(e)}"
+        })
     
     return results
 
