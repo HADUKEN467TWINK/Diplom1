@@ -275,7 +275,6 @@ async def home():
             <div class="card">
                 <div class="card-header">
                     <h2>Скачать в браузере</h2>
-                    <span class="method-badge method-get">GET</span>
                 </div>
                 <div class="card-body">
                     <p>Открывает страницу в браузере для скачивания файлов CVE и BDU напрямую в папку "Загрузки"</p>
@@ -292,28 +291,6 @@ async def home():
 
             <div class="card">
                 <div class="card-header">
-                    <h2>Скачать файлы</h2>
-                </div>
-                <div class="card-body">
-                    <p>Скачивает актуальные файлы CVE и БДУ из интернета в папку <code>__downloading_base___</code></p>
-                    <button class="btn btn-get" onclick="callAPI('GET', '/rep', 'result1')">Скачать файлы</button>
-                    <div id="result1" class="result-container"><pre></pre></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h2>Обновить базу</h2>
-                </div>
-                <div class="card-body">
-                    <p>Обновляет базу данных MongoDB новыми записями CVE и БДУ прямо из Интернета</p>
-                    <button class="btn btn-put" onclick="callAPI('PUT', '/rep', 'result2')">Обновить базу</button>
-                    <div id="result2" class="result-container"><pre></pre></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
                     <h2>Конфигурация</h2>
                 </div>
                 <div class="card-body">
@@ -323,19 +300,7 @@ async def home():
                 </div>
             </div>
         </div>
-
-        <div class="status-bar">
-            <div>
-                <span class="status-text">Статус:</span>
-                <span id="statusText" class="status-ready">Готов к работе</span>
-            </div>
-            <div>
-                <span class="status-text">Время:</span>
-                <span id="timeText"></span>
-            </div>
-        </div>
     </div>
-
 
     <script>
         function updateTime() {
@@ -458,9 +423,6 @@ async def home():
 
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded, loading config...');
-            setTimeout(function() {
-                callAPI('GET', '/config', 'result3');
-            }, 500);
         });
     </script>
 </body>
@@ -488,9 +450,6 @@ async def download_bdu_through_browser():
             </html>
         """)
 
-
-    # Определяем имя файла из URL
-    filename = "download_bdu.xml" if '.xml' in update_url_bdu.lower() else "download_bdu.zip"
     
     html_content = f"""
     <!DOCTYPE html>
@@ -563,7 +522,6 @@ async def download_bdu_through_browser():
                 setTimeout(function() {{
                     var link = document.createElement('a');
                     link.href = '{update_url_bdu}';
-                    link.download = '{filename}';
                     link.target = '_blank';
                     document.body.appendChild(link);
                     link.click();
@@ -578,7 +536,6 @@ async def download_bdu_through_browser():
             function downloadAgain() {{
                 var link = document.createElement('a');
                 link.href = '{update_url_bdu}';
-                link.download = '{filename}';
                 link.target = '_blank';
                 document.body.appendChild(link);
                 link.click();
@@ -596,9 +553,10 @@ async def download_bdu_through_browser():
             <br>
             <button onclick="downloadAgain()" class="btn">⬇️ Скачать еще раз</button>
             <br><br>
-            <a href="/" style="color: #667eea; text-decoration: none;">← Вернуться назад</a>
+            <a href="#" onclick="window.close(); return false;" style="color: #667eea; text-decoration: none;">
+                ← Вернуться назад
+            </a>
             <p style="margin-top: 20px; font-size: 12px; color: #999;">
-                Файл: <strong>{filename}</strong><br>
                 Если скачивание не началось автоматически, нажмите кнопку выше.
             </p>
         </div>
@@ -625,9 +583,6 @@ async def download_cve_through_browser():
                 </body>
             </html>
         """)
-    
-    # Определяем имя файла из URL
-    filename = "download_cve.zip" if '.zip' in update_url_cve.lower() else "download_cve.xml"
     
     html_content = f"""
     <!DOCTYPE html>
@@ -707,7 +662,6 @@ async def download_cve_through_browser():
                 setTimeout(function() {{
                     var link = document.createElement('a');
                     link.href = '{update_url_cve}';
-                    link.download = '{filename}';
                     link.target = '_blank';
                     document.body.appendChild(link);
                     link.click();
@@ -722,7 +676,6 @@ async def download_cve_through_browser():
             function downloadAgain() {{
                 var link = document.createElement('a');
                 link.href = '{update_url_cve}';
-                link.download = '{filename}';
                 link.target = '_blank';
                 document.body.appendChild(link);
                 link.click();
@@ -740,9 +693,10 @@ async def download_cve_through_browser():
             <br>
             <button onclick="downloadAgain()" class="btn">⬇️ Скачать еще раз</button>
             <br><br>
-            <a href="/" style="color: #667eea; text-decoration: none;">← Вернуться назад</a>
+            <a href="#" onclick="window.close(); return false;" style="color: #667eea; text-decoration: none;">
+                ← Вернуться назад
+            </a>
             <p style="margin-top: 20px; font-size: 12px; color: #999;">
-                Файл: <strong>{filename}</strong><br>
                 Если скачивание не началось автоматически, нажмите кнопку выше.
             </p>
         </div>

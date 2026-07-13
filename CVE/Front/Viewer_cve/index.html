@@ -377,6 +377,7 @@
             padding-right: 8px;
         }
 
+        /* ===== МОДАЛЬНОЕ ОКНО С FIXED HEADER ===== */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -399,29 +400,39 @@
             width: 95%;
             max-height: 90vh;
             border-radius: 16px;
-            padding: 30px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow-y: auto;
             position: relative;
             animation: modalFadeIn 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         @keyframes modalFadeIn {
             from { opacity: 0; transform: scale(0.95); }
             to { opacity: 1; transform: scale(1); }
         }
-        .modal-box h3 {
-            margin-bottom: 16px;
+        .modal-header {
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 10;
+            padding: 20px 30px 16px 30px;
+            border-bottom: 1px solid #e9edf2;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        .modal-header h3 {
+            margin: 0;
             color: #1e293b;
             font-size: 20px;
             display: flex;
             align-items: center;
             gap: 12px;
-            padding-right: 40px;
+            padding-right: 10px;
         }
-        .modal-box .modal-close {
-            position: absolute;
-            top: 12px;
-            right: 16px;
+        .modal-header .modal-close {
             font-size: 28px;
             cursor: pointer;
             color: #94a3b8;
@@ -429,19 +440,30 @@
             border: none;
             transition: 0.15s;
             line-height: 1;
+            padding: 0 8px;
+            flex-shrink: 0;
         }
-        .modal-box .modal-close:hover {
+        .modal-header .modal-close:hover {
             color: #1e293b;
             transform: scale(1.1);
         }
-
-        .modal-tabs {
+        .modal-body {
+            padding: 0 30px 30px 30px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-body .modal-tabs {
             display: flex;
             gap: 8px;
             margin-bottom: 16px;
             border-bottom: 2px solid #e9edf2;
             padding-bottom: 12px;
             flex-wrap: wrap;
+            position: sticky;
+            top: 0;
+            background: white;
+            z-index: 5;
+            padding-top: 16px;
         }
         .modal-tab {
             padding: 8px 20px;
@@ -522,7 +544,7 @@
             padding: 0;
             overflow: hidden;
             margin-top: 8px;
-            max-height: calc(90vh - 250px);
+            max-height: calc(90vh - 350px);
             overflow: auto;
             position: relative;
         }
@@ -579,8 +601,20 @@
                 justify-content: center;
             }
             .modal-box {
-                padding: 16px;
+                padding: 0;
                 width: 98%;
+            }
+            .modal-header {
+                padding: 12px 16px 10px 16px;
+            }
+            .modal-header h3 {
+                font-size: 16px;
+            }
+            .modal-body {
+                padding: 0 16px 16px 16px;
+            }
+            .modal-body .modal-tabs {
+                padding-top: 10px;
             }
             .detail-table .label {
                 min-width: 80px;
@@ -596,6 +630,9 @@
             .modal-tab {
                 padding: 6px 12px;
                 font-size: 12px;
+            }
+            .json-container {
+                max-height: calc(90vh - 280px);
             }
         }
         </style>
@@ -666,25 +703,29 @@
             <div class="footer-meta" id="totalCountInfo">Всего записей: —</div>
         </div>
 
-        <!-- Модальное окно -->
+        <!-- Модальное окно с фиксированной шапкой -->
         <div class="modal-overlay" id="detailModal">
             <div class="modal-box">
-                <button class="modal-close" id="modalClose">&times;</button>
-                <h3 id="modalTitle">Информация о CVE</h3>
-                <div class="modal-tabs">
-                    <button class="modal-tab active" data-tab="details">Детали</button>
-                    <button class="modal-tab" data-tab="json">JSON</button>
+                <div class="modal-header">
+                    <h3 id="modalTitle">Информация о CVE</h3>
+                    <button class="modal-close" id="modalClose">&times;</button>
                 </div>
-                <div class="modal-tab-content active" id="tab-details">
-                    <div id="modalDetails"></div>
-                </div>
-                <div class="modal-tab-content" id="tab-json">
-                    <div class="json-container">
-                        <div class="json-header">
-                            <span><i class="fas fa-code"></i> Исходный JSON</span>
-                            <button class="copy-btn" id="copyJsonBtn"><i class="fas fa-copy"></i> Копировать</button>
+                <div class="modal-body">
+                    <div class="modal-tabs">
+                        <button class="modal-tab active" data-tab="details">Детали</button>
+                        <button class="modal-tab" data-tab="json">JSON</button>
+                    </div>
+                    <div class="modal-tab-content active" id="tab-details">
+                        <div id="modalDetails"></div>
+                    </div>
+                    <div class="modal-tab-content" id="tab-json">
+                        <div class="json-container">
+                            <div class="json-header">
+                                <span><i class="fas fa-code"></i> Исходный JSON</span>
+                                <button class="copy-btn" id="copyJsonBtn"><i class="fas fa-copy"></i> Копировать</button>
+                            </div>
+                            <pre id="jsonContent"></pre>
                         </div>
-                        <pre id="jsonContent"></pre>
                     </div>
                 </div>
             </div>
@@ -697,8 +738,6 @@
             const pageSize = 20;
             let totalRecords = 0;
             let currentFilter = { search: '', severity: '' };
-            let currentCveData = null;
-            let currentCveId = '';
 
             const tbody = document.getElementById('cveTableBody');
             const searchInput = document.getElementById('searchInput');
@@ -719,6 +758,10 @@
             const copyJsonBtn = document.getElementById('copyJsonBtn');
             const tabButtons = document.querySelectorAll('.modal-tab');
 
+            let currentCveData = null;
+            let currentCveId = null;
+            let currentViewMode = 'details';
+
             // === ПОИСК В РЕАЛЬНОМ ВРЕМЕНИ ===
             searchInput.addEventListener('input', function() {
                 const searchTerm = this.value.trim();
@@ -731,14 +774,12 @@
                 }, 300);
             });
 
-            // === ФИЛЬТР ПО УРОВНЮ СЛОЖНОСТИ ===
             severityFilter.addEventListener('change', function() {
                 currentFilter.severity = this.value;
                 currentPage = 1;
                 refreshTable();
             });
 
-            // Обработчик Enter для немедленного поиска
             searchInput.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     clearTimeout(this._searchTimeout);
@@ -839,19 +880,64 @@
                         const vendor = a.vendor || '—';
                         const product = a.product || '—';
                         const versions = a.versions || [];
-                        const versionStr = versions.map(v => v.version || '—').join(', ');
-                        const status = a.defaultStatus || '—';
-                        return `<div><span class="tag">${vendor}</span> → <strong>${product}</strong> (${versionStr}) <span style="color:#64748b;font-size:11px;">[${status}]</span></div>`;
+                        const defaultStatus = a.defaultStatus || '—';
+                        
+                        let versionHtml = '';
+                        if (versions.length > 0) {
+                            versionHtml = versions.map(v => {
+                                const ver = v.version || '—';
+                                const status = v.status || '—';
+                                const lessThan = v.lessThan || '';
+                                const changes = v.changes || [];
+                                
+                                let changesHtml = '';
+                                if (changes.length > 0) {
+                                    changesHtml = changes.map(c => 
+                                        ` <span class="tag">изменение: ${c.at || '?'} (${c.status || '?'})</span>`
+                                    ).join('');
+                                }
+                                
+                                return `<div style="padding-left:12px; font-size:12px;">
+                                    <span class="tag">${ver}</span> 
+                                    статус: <span class="tag">${status}</span>
+                                    ${lessThan ? ` <span class="tag">до ${lessThan}</span>` : ''}
+                                    ${changesHtml}
+                                </div>`;
+                            }).join('');
+                        }
+                        
+                        return `<div style="margin-bottom:8px;">
+                            <span class="tag">${vendor}</span> → <strong>${product}</strong>
+                            <div style="margin-top:4px;">
+                                ${versionHtml}
+                                <div style="font-size:11px;color:#64748b;">статус по умолчанию: ${defaultStatus}</div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                }
+
+                const credits = item.containers?.cna?.credits || [];
+                let creditsHtml = 'Нет данных';
+                if (credits.length > 0) {
+                    creditsHtml = credits.map(c => {
+                        const name = c.value || '—';
+                        const type = c.type || '—';
+                        const lang = c.lang || '—';
+                        return `<div><span class="tag">${type}</span> ${name} (${lang})</div>`;
                     }).join('');
                 }
 
                 const problemTypes = item.containers?.cna?.problemTypes || [];
                 let problemHtml = 'Нет данных';
-                if (problemTypes.length > 0 && problemTypes[0].descriptions) {
-                    problemHtml = problemTypes[0].descriptions.map(d => {
-                        const cwe = d.cweId || '—';
-                        const desc2 = d.description || '—';
-                        return `<div><span class="tag">${cwe}</span> ${desc2}</div>`;
+                if (problemTypes.length > 0) {
+                    problemHtml = problemTypes.flatMap(pt => {
+                        const descriptions = pt.descriptions || [];
+                        return descriptions.map(d => {
+                            const cwe = d.cweId || '—';
+                            const desc2 = d.description || '—';
+                            const type = d.type || '—';
+                            return `<div><span class="tag">${cwe}</span> ${desc2} <span style="font-size:11px;color:#94a3b8;">[${type}]</span></div>`;
+                        });
                     }).join('');
                 }
 
@@ -859,6 +945,9 @@
                 let metricsHtml = 'Нет данных';
                 if (metrics.length > 0) {
                     metricsHtml = metrics.map(m => {
+                        const format = m.format || '—';
+                        const scenario = m.scenarios?.[0]?.value || '—';
+                        
                         let parts = [];
                         for (const [key, val] of Object.entries(m)) {
                             if (key !== 'format' && key !== 'scenarios' && typeof val === 'object' && val !== null) {
@@ -866,10 +955,25 @@
                                 const vector = val.vectorString || '—';
                                 const baseScore = val.baseScore || '—';
                                 const baseSeverity = val.baseSeverity || '—';
-                                parts.push(`<div><strong>${key}</strong> (v${version}) | Score: ${baseScore} | Severity: ${baseSeverity}</div>`);
-                                if (vector !== '—') {
-                                    parts.push(`<div style="font-size:11px;color:#64748b;padding-left:12px;">Vector: ${vector}</div>`);
-                                }
+                                
+                                const cvssFields = ['attackVector', 'attackComplexity', 'privilegesRequired', 
+                                                   'userInteraction', 'scope', 'confidentialityImpact', 
+                                                   'integrityImpact', 'availabilityImpact'];
+                                let cvssDetails = '';
+                                cvssFields.forEach(field => {
+                                    if (val[field]) {
+                                        cvssDetails += `<div style="font-size:11px;color:#64748b;padding-left:12px;">${field}: ${val[field]}</div>`;
+                                    }
+                                });
+                                
+                                parts.push(`<div style="margin-bottom:8px;border-left:3px solid #e2e8f0;padding-left:12px;">
+                                    <strong>${key}</strong> (v${version}) 
+                                    <span class="severity-badge ${getSeverityClass(baseSeverity)}">${baseSeverity}</span>
+                                    <span style="font-weight:500;">Score: ${baseScore}</span>
+                                    <div style="font-size:11px;color:#64748b;">Vector: ${vector}</div>
+                                    ${cvssDetails}
+                                    <div style="font-size:11px;color:#94a3b8;margin-top:4px;">format: ${format} | scenario: ${scenario}</div>
+                                </div>`);
                             }
                         }
                         return parts.join('');
@@ -881,32 +985,104 @@
                 if (adp.length > 0) {
                     adpHtml = adp.map(a => {
                         const provider = a.providerMetadata?.shortName || '—';
+                        const title = a.title || '—';
                         const metrics2 = a.metrics || [];
-                        let metricsHtml2 = metrics2.map(m => {
+                        
+                        let metricsHtml2 = '';
+                        metrics2.forEach(m => {
                             if (m.other) {
                                 const content = m.other.content || {};
-                                return `<div><strong>SSVC</strong> | Exploitation: ${content.Exploitation || '—'} | Automatable: ${content.Automatable || '—'}</div>`;
+                                metricsHtml2 += `<div style="padding-left:12px;">
+                                    <span class="tag">SSVC</span> 
+                                    Exploitation: <span class="tag">${content.Exploitation || '—'}</span>
+                                    Automatable: <span class="tag">${content.Automatable || '—'}</span>
+                                    Technical Impact: <span class="tag">${content['Technical Impact'] || '—'}</span>
+                                </div>`;
                             }
-                            return '';
-                        }).join('');
-                        return `<div><span class="tag">${provider}</span> ${metricsHtml2}</div>`;
+                            if (m.cvssV3_1) {
+                                const cvss = m.cvssV3_1;
+                                metricsHtml2 += `<div style="padding-left:12px;">
+                                    <span class="tag">CVSS 3.1</span>
+                                    Score: ${cvss.baseScore || '—'} | 
+                                    Severity: ${cvss.baseSeverity || '—'}
+                                </div>`;
+                            }
+                        });
+                        
+                        return `<div style="margin-bottom:8px;border:1px solid #e2e8f0;border-radius:8px;padding:8px;">
+                            <span class="tag">${provider}</span> ${title ? `— ${title}` : ''}
+                            ${metricsHtml2}
+                        </div>`;
                     }).join('');
                 }
 
+                const solutions = item.containers?.cna?.solutions || [];
+                let solutionsHtml = 'Нет данных';
+                if (solutions.length > 0) {
+                    solutionsHtml = solutions.map(s => {
+                        const lang = s.lang || '—';
+                        const value = s.value || '—';
+                        return `<div><span class="tag">${lang}</span> ${escapeHtml(value)}</div>`;
+                    }).join('');
+                }
+
+                const workarounds = item.containers?.cna?.workarounds || [];
+                let workaroundsHtml = 'Нет данных';
+                if (workarounds.length > 0) {
+                    workaroundsHtml = workarounds.map(w => {
+                        const lang = w.lang || '—';
+                        const value = w.value || '—';
+                        return `<div><span class="tag">${lang}</span> ${escapeHtml(value)}</div>`;
+                    }).join('');
+                }
+
+                const isRejected = state === 'REJECTED';
+                const rejectedReason = item.containers?.cna?.rejectedReasons?.[0]?.value || '';
+
                 return `
+                    ${isRejected ? `
+                        <div style="background:#fef2f2;border:2px solid #ef4444;border-radius:8px;padding:12px;margin-bottom:16px;">
+                            <strong style="color:#b91c1c;">⚠️ Эта CVE была отклонена (REJECTED)</strong>
+                            <div style="margin-top:8px;color:#64748b;">${escapeHtml(rejectedReason)}</div>
+                        </div>
+                    ` : ''}
+                    
                     <table class="detail-table">
                         <tr><td class="label">CVE ID</td><td class="value"><strong>${cveId}</strong></td></tr>
                         <tr><td class="label">Описание</td><td class="value">${escapeHtml(desc)}</td></tr>
-                        <tr><td class="label">Уровень</td><td class="value"><span class="severity-badge ${severityClass}">${severity}</span> ${score ? `(Score: ${score})` : ''}</td></tr>
-                        <tr><td class="label">Состояние</td><td class="value"><span class="tag">${state}</span></td></tr>
+                        <tr><td class="label">Уровень</td><td class="value">
+                            <span class="severity-badge ${severityClass}">${severity}</span> 
+                            ${score ? `(Score: ${score})` : ''}
+                        </td></tr>
+                        <tr><td class="label">Состояние</td><td class="value">
+                            <span class="tag" style="${isRejected ? 'background:#fecaca;color:#b91c1c;' : ''}">${state}</span>
+                            ${isRejected ? ` <span style="color:#ef4444;">(Отклонена)</span>` : ''}
+                        </td></tr>
                         <tr><td class="label">Назначил</td><td class="value">${assigner}</td></tr>
                         <tr><td class="label">Дата публикации</td><td class="value">${published}</td></tr>
                         <tr><td class="label">Дата резервирования</td><td class="value">${reserved}</td></tr>
                         <tr><td class="label">Дата обновления</td><td class="value">${updated}</td></tr>
+                        
+                        ${creditsHtml !== 'Нет данных' ? `
+                            <tr><td class="label">Исследователи</td><td class="value">${creditsHtml}</td></tr>
+                        ` : ''}
+                        
                         <tr><td class="label">Затронутые продукты</td><td class="value">${affectedHtml}</td></tr>
                         <tr><td class="label">Типы проблем</td><td class="value">${problemHtml}</td></tr>
                         <tr><td class="label">CVSS метрики</td><td class="value">${metricsHtml}</td></tr>
-                        <tr><td class="label">ADP метрики</td><td class="value">${adpHtml}</td></tr>
+                        
+                        ${adpHtml !== 'Нет данных' ? `
+                            <tr><td class="label">ADP метрики</td><td class="value">${adpHtml}</td></tr>
+                        ` : ''}
+                        
+                        ${solutionsHtml !== 'Нет данных' ? `
+                            <tr><td class="label">Решения</td><td class="value">${solutionsHtml}</td></tr>
+                        ` : ''}
+                        
+                        ${workaroundsHtml !== 'Нет данных' ? `
+                            <tr><td class="label">Обходные пути</td><td class="value">${workaroundsHtml}</td></tr>
+                        ` : ''}
+                        
                         <tr><td class="label">Ссылки</td><td class="value">${renderReferencesFull(refs)}</td></tr>
                     </table>
                 `;
@@ -990,6 +1166,7 @@
                     const refs = getReferences(item);
                     const uniqueId = `desc-${index}-${cveId.replace(/[^a-zA-Z0-9]/g, '')}`;
                     const isLong = desc.length > 120;
+                    const escapedCveId = cveId.replace(/'/g, "\\'");
 
                     html += `<tr>
                         <td><span class="cve-id">${cveId}</span></td>
@@ -1004,10 +1181,10 @@
                         <td>${published}</td>
                         <td class="references-cell">${renderReferencesShort(refs)}</td>
                         <td class="actions-cell">
-                            <button class="action-btn expand-btn" onclick="showDetails('${cveId.replace(/'/g, "\\'")}')" title="Показать полную информацию">
+                            <button class="action-btn expand-btn" onclick="showDetails('${escapedCveId}')" title="Показать полную информацию">
                                 <i class="fas fa-ellipsis-h"></i>
                             </button>
-                            <button class="action-btn json-btn" onclick="showJson('${cveId.replace(/'/g, "\\'")}')" title="Показать JSON">
+                            <button class="action-btn json-btn" onclick="showJson('${escapedCveId}')" title="Показать JSON">
                                 <i class="fas fa-code"></i>
                             </button>
                         </td>
@@ -1031,6 +1208,8 @@
                 }
             };
 
+            // ===== УПРАВЛЕНИЕ МОДАЛЬНЫМ ОКНОМ =====
+            
             window.showDetails = async function(cveId) {
                 try {
                     const resp = await fetch(`${API_BASE}/api/cve/${cveId}`);
@@ -1039,12 +1218,13 @@
                     if (!result.status || !result.data) {
                         throw new Error('Данные не найдены');
                     }
-                    const item = result.data;
-                    currentCveData = item;
+                    
+                    currentCveData = result.data;
                     currentCveId = cveId;
+                    currentViewMode = 'details';
                     
                     modalTitle.textContent = `${cveId} — Полная информация`;
-                    modalDetails.innerHTML = renderDetailTable(item);
+                    modalDetails.innerHTML = renderDetailTable(currentCveData);
                     
                     activateTab('details');
                     modalOverlay.classList.add('active');
@@ -1063,12 +1243,13 @@
                     if (!result.status || !result.data) {
                         throw new Error('Данные не найдены');
                     }
-                    const jsonData = result.data;
-                    currentCveData = jsonData;
+                    
+                    currentCveData = result.data;
                     currentCveId = cveId;
+                    currentViewMode = 'json';
                     
                     modalTitle.textContent = `${cveId} — Исходный JSON`;
-                    const formatted = JSON.stringify(jsonData, null, 2);
+                    const formatted = JSON.stringify(currentCveData, null, 2);
                     jsonContent.textContent = formatted;
                     
                     activateTab('json');
@@ -1081,28 +1262,41 @@
             };
 
             function activateTab(tabName) {
+                currentViewMode = tabName;
+                
                 tabButtons.forEach(btn => {
                     const tab = btn.dataset.tab;
                     btn.classList.toggle('active', tab === tabName);
                 });
+                
                 document.querySelectorAll('.modal-tab-content').forEach(el => {
-                    el.classList.toggle('active', el.id === `tab-${tabName}`);
+                    const isActive = el.id === `tab-${tabName}`;
+                    el.classList.toggle('active', isActive);
                 });
+                
+                if (tabName === 'json' && currentCveData) {
+                    const formatted = JSON.stringify(currentCveData, null, 2);
+                    jsonContent.textContent = formatted;
+                }
+                
+                if (tabName === 'details' && currentCveData) {
+                    modalDetails.innerHTML = renderDetailTable(currentCveData);
+                }
             }
 
             tabButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const tab = this.dataset.tab;
                     activateTab(tab);
-                    if (tab === 'json' && !jsonContent.textContent && currentCveId) {
-                        showJson(currentCveId);
-                    }
                 });
             });
 
             copyJsonBtn.addEventListener('click', function() {
                 const text = jsonContent.textContent;
-                if (!text) return;
+                if (!text) {
+                    alert('Нет данных для копирования');
+                    return;
+                }
                 navigator.clipboard.writeText(text).then(() => {
                     const originalText = this.innerHTML;
                     this.innerHTML = '<i class="fas fa-check"></i> Скопировано!';
@@ -1124,22 +1318,22 @@
                 });
             });
 
-            modalClose.addEventListener('click', () => {
+            function closeModal() {
                 modalOverlay.classList.remove('active');
                 document.body.style.overflow = '';
-            });
+            }
+
+            modalClose.addEventListener('click', closeModal);
 
             modalOverlay.addEventListener('click', (e) => {
                 if (e.target === modalOverlay) {
-                    modalOverlay.classList.remove('active');
-                    document.body.style.overflow = '';
+                    closeModal();
                 }
             });
 
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape') {
-                    modalOverlay.classList.remove('active');
-                    document.body.style.overflow = '';
+                    closeModal();
                 }
             });
 

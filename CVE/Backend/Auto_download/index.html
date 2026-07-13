@@ -224,7 +224,6 @@
             <div class="card">
                 <div class="card-header">
                     <h2>Скачать в браузере</h2>
-                    <span class="method-badge method-get">GET</span>
                 </div>
                 <div class="card-body">
                     <p>Открывает страницу в браузере для скачивания файлов CVE и BDU напрямую в папку "Загрузки"</p>
@@ -241,28 +240,6 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h2>Скачать файлы</h2>
-                </div>
-                <div class="card-body">
-                    <p>Скачивает актуальные файлы CVE и БДУ из интернета в папку <code>__downloading_base___</code></p>
-                    <button class="btn btn-get" onclick="callAPI('GET', '/rep', 'result1')">Скачать файлы</button>
-                    <div id="result1" class="result-container"><pre></pre></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
-                    <h2>Обновить базу</h2>
-                </div>
-                <div class="card-body">
-                    <p>Обновляет базу данных MongoDB новыми записями CVE и БДУ прямо из Интернета</p>
-                    <button class="btn btn-put" onclick="callAPI('PUT', '/rep', 'result2')">Обновить базу</button>
-                    <div id="result2" class="result-container"><pre></pre></div>
-                </div>
-            </div>
-
-            <div class="card">
-                <div class="card-header">
                     <h2>Конфигурация</h2>
                 </div>
                 <div class="card-body">
@@ -272,19 +249,7 @@
                 </div>
             </div>
         </div>
-
-        <div class="status-bar">
-            <div>
-                <span class="status-text">Статус:</span>
-                <span id="statusText" class="status-ready">Готов к работе</span>
-            </div>
-            <div>
-                <span class="status-text">Время:</span>
-                <span id="timeText"></span>
-            </div>
-        </div>
     </div>
-
 
     <script>
         function updateTime() {
@@ -407,9 +372,6 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             console.log('Page loaded, loading config...');
-            setTimeout(function() {
-                callAPI('GET', '/config', 'result3');
-            }, 500);
         });
     </script>
 </body>
