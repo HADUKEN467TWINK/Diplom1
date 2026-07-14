@@ -49,384 +49,384 @@ async def get_config_from_redis():
 @router.get("/", response_class=HTMLResponse)
 async def home():
     html_content = """
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CVE/BDU Управление базами данных</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        <!DOCTYPE html>
+        <html lang="ru">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>CVE/BDU Управление базами данных</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    min-height: 100vh;
+                    padding: 20px;
+                }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+                .container {
+                    max-width: 1200px;
+                    margin: 0 auto;
+                }
 
-        .header {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-        }
+                .header {
+                    background: white;
+                    border-radius: 15px;
+                    padding: 30px;
+                    margin-bottom: 30px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                }
 
-        .header h1 {
-            color: #333;
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
+                .header h1 {
+                    color: #333;
+                    font-size: 2.5em;
+                    margin-bottom: 10px;
+                }
 
-        .header p {
-            color: #666;
-            font-size: 1.1em;
-        }
+                .header p {
+                    color: #666;
+                    font-size: 1.1em;
+                }
 
-        .status-badge {
-            display: inline-block;
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: bold;
-            margin-top: 10px;
-            background: #4CAF50;
-            color: white;
-        }
+                .status-badge {
+                    display: inline-block;
+                    padding: 5px 15px;
+                    border-radius: 20px;
+                    font-size: 0.9em;
+                    font-weight: bold;
+                    margin-top: 10px;
+                    background: #4CAF50;
+                    color: white;
+                }
 
-        .grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 25px;
-            margin-bottom: 30px;
-        }
+                .grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+                    gap: 25px;
+                    margin-bottom: 30px;
+                }
 
-        .card {
-            background: white;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            transition: transform 0.3s ease;
-        }
+                .card {
+                    background: white;
+                    border-radius: 15px;
+                    padding: 25px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                    transition: transform 0.3s ease;
+                }
 
-        .card:hover {
-            transform: translateY(-5px);
-        }
+                .card:hover {
+                    transform: translateY(-5px);
+                }
 
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }
+                .card-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 2px solid #f0f0f0;
+                }
 
-        .card-header h2 {
-            color: #333;
-            font-size: 1.3em;
-        }
+                .card-header h2 {
+                    color: #333;
+                    font-size: 1.3em;
+                }
 
-        .method-badge {
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.8em;
-            font-weight: bold;
-            color: white;
-        }
+                .method-badge {
+                    padding: 4px 12px;
+                    border-radius: 12px;
+                    font-size: 0.8em;
+                    font-weight: bold;
+                    color: white;
+                }
 
-        .method-get {
-            background: #2196F3;
-        }
+                .method-get {
+                    background: #2196F3;
+                }
 
-        .method-put {
-            background: #FF9800;
-        }
+                .method-put {
+                    background: #FF9800;
+                }
 
-        .card-body {
-            color: #666;
-        }
+                .card-body {
+                    color: #666;
+                }
 
-        .card-body p {
-            margin-bottom: 15px;
-            line-height: 1.6;
-        }
+                .card-body p {
+                    margin-bottom: 15px;
+                    line-height: 1.6;
+                }
 
-        .btn {
-            padding: 10px 25px;
-            border: none;
-            border-radius: 8px;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: white;
-            width: 100%;
-        }
+                .btn {
+                    padding: 10px 25px;
+                    border: none;
+                    border-radius: 8px;
+                    font-size: 1em;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    color: white;
+                    width: 100%;
+                }
 
-        .btn-get {
-            background: #2196F3;
-        }
+                .btn-get {
+                    background: #2196F3;
+                }
 
-        .btn-get:hover {
-            background: #1976D2;
-            transform: scale(1.02);
-        }
+                .btn-get:hover {
+                    background: #1976D2;
+                    transform: scale(1.02);
+                }
 
-        .btn-put {
-            background: #FF9800;
-        }
+                .btn-put {
+                    background: #FF9800;
+                }
 
-        .btn-put:hover {
-            background: #F57C00;
-            transform: scale(1.02);
-        }
+                .btn-put:hover {
+                    background: #F57C00;
+                    transform: scale(1.02);
+                }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+                .btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
+                }
 
-        .result-container {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-top: 20px;
-            max-height: 400px;
-            overflow: auto;
-            display: none;
-        }
+                .result-container {
+                    background: #f8f9fa;
+                    border-radius: 10px;
+                    padding: 15px;
+                    margin-top: 20px;
+                    max-height: 400px;
+                    overflow: auto;
+                    display: none;
+                }
 
-        .result-container.show {
-            display: block;
-        }
+                .result-container.show {
+                    display: block;
+                }
 
-        .result-container pre {
-            margin: 0;
-            font-size: 0.9em;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            color: #333;
-            font-family: 'Courier New', monospace;
-        }
+                .result-container pre {
+                    margin: 0;
+                    font-size: 0.9em;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    color: #333;
+                    font-family: 'Courier New', monospace;
+                }
 
-        .status-bar {
-            background: white;
-            border-radius: 15px;
-            padding: 20px 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+                .status-bar {
+                    background: white;
+                    border-radius: 15px;
+                    padding: 20px 30px;
+                    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    flex-wrap: wrap;
+                }
 
-        .status-text {
-            font-weight: 600;
-        }
+                .status-text {
+                    font-weight: 600;
+                }
 
-        .status-ready {
-            color: #4CAF50;
-        }
+                .status-ready {
+                    color: #4CAF50;
+                }
 
-        .status-loading {
-            color: #FF9800;
-        }
+                .status-loading {
+                    color: #FF9800;
+                }
 
-        .status-error {
-            color: #d32f2f;
-        }
+                .status-error {
+                    color: #d32f2f;
+                }
 
-        @media (max-width: 768px) {
-            .header h1 {
-                font-size: 1.8em;
-            }
+                @media (max-width: 768px) {
+                    .header h1 {
+                        font-size: 1.8em;
+                    }
 
-            .grid {
-                grid-template-columns: 1fr;
-            }
+                    .grid {
+                        grid-template-columns: 1fr;
+                    }
 
-            .card {
-                padding: 20px;
-            }
-        }
-    </style>
-</head>
-<body>
-    
-    <div class="container">
-        <div class="header">
-            <h1>CVE/BDU Скачать бесплатно</h1>
-            <p>Скачивание и обновление баз данных уязвимостей CVE и БДУ</p>
-        </div>
-
-        <div class="grid">
-            <div class="card">
-                <div class="card-header">
-                    <h2>Скачать в браузере</h2>
+                    .card {
+                        padding: 20px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            
+            <div class="container">
+                <div class="header">
+                    <h1>CVE/BDU Скачать бесплатно</h1>
+                    <p>Скачивание и обновление баз данных уязвимостей CVE и БДУ</p>
                 </div>
-                <div class="card-body">
-                    <p>Открывает страницу в браузере для скачивания файлов CVE и BDU напрямую в папку "Загрузки"</p>
-                    <div style="display: flex; gap: 10px;">
-                        <button class="btn btn-get" onclick="window.open('/download-cve-browser', '_blank')" style="flex: 1;">
-                            CVE
-                        </button>
-                        <button class="btn btn-get" onclick="window.open('/download-bdu-browser', '_blank')" style="flex: 1; background: #f5576c;">
-                            BDU
-                        </button>
+
+                <div class="grid">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Скачать в браузере</h2>
+                        </div>
+                        <div class="card-body">
+                            <p>Открывает страницу в браузере для скачивания файлов CVE и BDU напрямую в папку "Загрузки"</p>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-get" onclick="window.open('/download-cve-browser', '_blank')" style="flex: 1;">
+                                    CVE
+                                </button>
+                                <button class="btn btn-get" onclick="window.open('/download-bdu-browser', '_blank')" style="flex: 1; background: #f5576c;">
+                                    BDU
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Конфигурация</h2>
+                        </div>
+                        <div class="card-body">
+                            <p>Просмотр текущей конфигурации из Redis</p>
+                            <button class="btn btn-get" onclick="callAPI('GET', '/config', 'result3')">Показать конфигурацию</button>
+                            <div id="result3" class="result-container"><pre></pre></div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="card">
-                <div class="card-header">
-                    <h2>Конфигурация</h2>
-                </div>
-                <div class="card-body">
-                    <p>Просмотр текущей конфигурации из Redis</p>
-                    <button class="btn btn-get" onclick="callAPI('GET', '/config', 'result3')">Показать конфигурацию</button>
-                    <div id="result3" class="result-container"><pre></pre></div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function updateTime() {
-            const now = new Date();
-            const timeEl = document.getElementById('timeText');
-            if (timeEl) {
-                timeEl.textContent = now.toLocaleString('ru-RU');
-            }
-        }
-        updateTime();
-        setInterval(updateTime, 1000);
-
-        async function callAPI(method, endpoint, resultId) {
-            const resultDiv = document.getElementById(resultId);
-            if (!resultDiv) {
-                console.error('Element not found:', resultId);
-                return;
-            }
-            
-            const pre = resultDiv.querySelector('pre');
-            if (!pre) {
-                console.error('Pre element not found in:', resultId);
-                return;
-            }
-            
-            const button = resultDiv.parentElement.querySelector('.btn');
-            const statusText = document.getElementById('statusText');
-
-            resultDiv.classList.add('show');
-            if (button) {
-                button.disabled = true;
-                button.innerHTML = 'Загрузка...';
-            }
-
-            pre.textContent = '';
-
-            if (statusText) {
-                statusText.textContent = 'Выполняется запрос...';
-                statusText.className = 'status-text status-loading';
-            }
-
-            try {
-                const url = window.location.origin + endpoint;
-                console.log('Calling:', method, url);
-
-                const response = await fetch(url, {
-                    method: method,
-                    headers: {
-                        'Content-Type': 'application/json',
+            <script>
+                function updateTime() {
+                    const now = new Date();
+                    const timeEl = document.getElementById('timeText');
+                    if (timeEl) {
+                        timeEl.textContent = now.toLocaleString('ru-RU');
                     }
+                }
+                updateTime();
+                setInterval(updateTime, 1000);
+
+                async function callAPI(method, endpoint, resultId) {
+                    const resultDiv = document.getElementById(resultId);
+                    if (!resultDiv) {
+                        console.error('Element not found:', resultId);
+                        return;
+                    }
+                    
+                    const pre = resultDiv.querySelector('pre');
+                    if (!pre) {
+                        console.error('Pre element not found in:', resultId);
+                        return;
+                    }
+                    
+                    const button = resultDiv.parentElement.querySelector('.btn');
+                    const statusText = document.getElementById('statusText');
+
+                    resultDiv.classList.add('show');
+                    if (button) {
+                        button.disabled = true;
+                        button.innerHTML = 'Загрузка...';
+                    }
+
+                    pre.textContent = '';
+
+                    if (statusText) {
+                        statusText.textContent = 'Выполняется запрос...';
+                        statusText.className = 'status-text status-loading';
+                    }
+
+                    try {
+                        const url = window.location.origin + endpoint;
+                        console.log('Calling:', method, url);
+
+                        const response = await fetch(url, {
+                            method: method,
+                            headers: {
+                                'Content-Type': 'application/json',
+                            }
+                        });
+
+                        const data = await response.json();
+                        console.log('Response:', data);
+
+                        let output = '';
+
+                        if (endpoint === '/config') {
+                            if (data.status && data.config) {
+                                output = 'Текущая конфигурация:\\n\\n';
+                                for (const [key, value] of Object.entries(data.config)) {
+                                    output += `${key}: ${value || '(не задано)'}\\n`;
+                                }
+                            } else {
+                                output = JSON.stringify(data, null, 2);
+                            }
+                        } else if (Array.isArray(data)) {
+                            output = 'Результаты скачивания:\\n\\n';
+                            data.forEach((item, index) => {
+                                output += `Файл ${index + 1}:\\n`;
+                                if (item.status) {
+                                    output += `${item.message}\\n`;
+                                }
+                                else {
+                                    output += `${item.message}\\n`;
+                                }
+                                output += '\\n';
+                            });
+                        } else if (data.status !== undefined && data.statistics) {
+                            output = 'Статистика обновления:\\n\\n';
+                            output += `Статус: ${data.status ? 'Успешно' : 'Ошибка'}\\n`;
+                            output += `Сообщение: ${data.message || 'Нет данных'}\\n\\n`;
+
+                            if (data.statistics) {
+                                output += 'Детали:\\n';
+                                for (const [key, value] of Object.entries(data.statistics)) {
+                                    output += `${key}: ${value}\\n`;
+                                }
+                            }
+                        } else {
+                            output = JSON.stringify(data, null, 2);
+                        }
+
+                        pre.textContent = output;
+
+                        if (statusText) {
+                            if (response.ok) {
+                                statusText.textContent = 'Готов к работе';
+                                statusText.className = 'status-text status-ready';
+                            } else {
+                                statusText.textContent = 'Ошибка запроса';
+                                statusText.className = 'status-text status-error';
+                            }
+                        }
+
+                    } catch (error) {
+                        console.error('Error:', error);
+                        pre.textContent = ' Ошибка: ' + error.message + '\\n\\nПроверьте, запущен ли сервер.';
+                        if (statusText) {
+                            statusText.textContent = ' Ошибка соединения';
+                            statusText.className = 'status-text status-error';
+                        }
+                    } finally {
+                        if (button) {
+                            button.disabled = false;
+                            button.innerHTML = method === 'GET' ? 'Выполнить' : 'Обновить';
+                        }
+                    }
+                }
+
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('Page loaded, loading config...');
                 });
-
-                const data = await response.json();
-                console.log('Response:', data);
-
-                let output = '';
-
-                if (endpoint === '/config') {
-                    if (data.status && data.config) {
-                        output = 'Текущая конфигурация:\\n\\n';
-                        for (const [key, value] of Object.entries(data.config)) {
-                            output += `${key}: ${value || '(не задано)'}\\n`;
-                        }
-                    } else {
-                        output = JSON.stringify(data, null, 2);
-                    }
-                } else if (Array.isArray(data)) {
-                    output = 'Результаты скачивания:\\n\\n';
-                    data.forEach((item, index) => {
-                        output += `Файл ${index + 1}:\\n`;
-                        if (item.status) {
-                            output += `${item.message}\\n`;
-                        }
-                        else {
-                            output += `${item.message}\\n`;
-                        }
-                        output += '\\n';
-                    });
-                } else if (data.status !== undefined && data.statistics) {
-                    output = 'Статистика обновления:\\n\\n';
-                    output += `Статус: ${data.status ? 'Успешно' : 'Ошибка'}\\n`;
-                    output += `Сообщение: ${data.message || 'Нет данных'}\\n\\n`;
-
-                    if (data.statistics) {
-                        output += 'Детали:\\n';
-                        for (const [key, value] of Object.entries(data.statistics)) {
-                            output += `${key}: ${value}\\n`;
-                        }
-                    }
-                } else {
-                    output = JSON.stringify(data, null, 2);
-                }
-
-                pre.textContent = output;
-
-                if (statusText) {
-                    if (response.ok) {
-                        statusText.textContent = 'Готов к работе';
-                        statusText.className = 'status-text status-ready';
-                    } else {
-                        statusText.textContent = 'Ошибка запроса';
-                        statusText.className = 'status-text status-error';
-                    }
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-                pre.textContent = ' Ошибка: ' + error.message + '\\n\\nПроверьте, запущен ли сервер.';
-                if (statusText) {
-                    statusText.textContent = ' Ошибка соединения';
-                    statusText.className = 'status-text status-error';
-                }
-            } finally {
-                if (button) {
-                    button.disabled = false;
-                    button.innerHTML = method === 'GET' ? 'Выполнить' : 'Обновить';
-                }
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Page loaded, loading config...');
-        });
-    </script>
-</body>
-</html>
+            </script>
+        </body>
+        </html>
     """
     return HTMLResponse(content=html_content)
 
