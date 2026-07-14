@@ -518,8 +518,8 @@
     <body>
         <div class="container">
             <div class="header">
-                <h1>CVE/BDU Загрузка в базу данных</h1>
-                <p>Выберите файлы CVE и/или BDU для загрузки в MongoDB</p>
+                <h1>CVE/BDU Загрузить файлы</h1>
+                <p>Выберите файлы CVE и/или BDU (XML или ZIP) для загрузки в MongoDB</p>
                 <div style="margin-top: 10px;">
                     <button class="reload-btn" onclick="clearAndRefresh()" style="background: #e74c3c; margin-left: 10px;">🗑️ Очистить и обновить</button>
                 </div>
@@ -541,7 +541,7 @@
                             <span class="icon">📄</span>
                             <div class="text">Нажмите для выбора файлов</div>
                             <div class="subtext">или перетащите файлы сюда</div>
-                            <input type="file" id="fileInput" multiple>
+                            <input type="file" id="fileInput" multiple accept=".xml,.zip,.json,.csv,.txt">
                         </div>
                         
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
@@ -553,7 +553,7 @@
                         </div>
                         
                         <div class="button-group">
-                            <button class="btn-small danger" onclick="clearAllFiles()">🗑️ Очистить</button>
+                            <button class="btn-small danger" onclick="clearAllFiles()">Очистить</button>
                         </div>
                         
                         <div class="checkbox-group">
@@ -600,7 +600,7 @@
             
             <div class="progress-wrapper" id="progressWrapper">
                 <div class="progress-top">
-                    <span class="progress-label" id="progressLabel">⏳ Ожидание</span>
+                    <span class="progress-label" id="progressLabel">Ожидание</span>
                     <span class="progress-percent" id="progressPercent">0%</span>
                 </div>
                 <div class="progress-track">
@@ -624,12 +624,10 @@
             const progressMessage = document.getElementById('progressMessage');
 
             function refreshPage() {
-                // Просто перезагружаем страницу GET запросом
                 window.location.href = window.location.pathname;
             }
 
             function clearAndRefresh() {
-                // Очищаем сохраненный taskId и перезагружаем
                 localStorage.removeItem('activeTaskId');
                 if (statusCheckInterval) {
                     clearInterval(statusCheckInterval);
@@ -638,7 +636,6 @@
                 window.location.href = window.location.pathname;
             }
 
-            // ----- РАБОТА С LOCALSTORAGE (только для taskId) -----
             function saveTaskId(taskId) {
                 if (taskId) {
                     localStorage.setItem('activeTaskId', taskId);
@@ -699,15 +696,19 @@
 
             function detectFileType(filename) {
                 const lower = filename.toLowerCase();
-                const cvePatterns = ['cve', 'vulnerability', 'nvd', 'vuln'];
-                const bduPatterns = ['bdu', 'bd', 'vul'];
                 
+                // Проверяем на CVE
+                const cvePatterns = ['cve', 'vulnerability', 'nvd', 'vuln'];
                 for (const pattern of cvePatterns) {
                     if (lower.includes(pattern)) return 'cve';
                 }
+                
+                // Проверяем на BDU
+                const bduPatterns = ['bdu', 'bd', 'vul'];
                 for (const pattern of bduPatterns) {
                     if (lower.includes(pattern)) return 'bdu';
                 }
+                
                 return 'other';
             }
 
@@ -807,37 +808,6 @@
                     updateFileList();
                     document.getElementById('restoreNotice').classList.remove('show');
                 }
-            }
-
-            function autoDetectFiles() {
-                if (selectedFiles.length === 0) {
-                    alert('Сначала выберите файлы');
-                    return;
-                }
-                
-                let newCve = null;
-                let newBdu = null;
-                
-                for (const file of selectedFiles) {
-                    const type = detectFileType(file.name);
-                    if (type === 'cve' && !newCve) {
-                        newCve = file;
-                    } else if (type === 'bdu' && !newBdu) {
-                        newBdu = file;
-                    }
-                }
-                
-                if (newCve) {
-                    cveFile = newCve;
-                    document.getElementById('cveFileName').textContent = cveFile.name;
-                }
-                
-                if (newBdu) {
-                    bduFile = newBdu;
-                    document.getElementById('bduFileName').textContent = bduFile.name;
-                }
-                
-                updateFileList();
             }
 
             const fileSelector = document.getElementById('fileSelector');
@@ -952,9 +922,9 @@
                             statusCheckInterval = null;
                         }
                         
-                        pre.textContent = `❌ Ошибка: ${data.message || 'Неизвестная ошибка'}`;
+                        pre.textContent = `Ошибка: ${data.message || 'Неизвестная ошибка'}`;
                         resultDiv.classList.add('show');
-                        setProgress(100, '❌ Ошибка', data.message || 'Ошибка выполнения', true);
+                        setProgress(100, 'Ошибка', data.message || 'Ошибка выполнения', true);
                         
                         document.getElementById('taskIdDisplay').classList.remove('show');
                         document.getElementById('uploadBtn').disabled = false;
@@ -991,7 +961,6 @@
                 }
             }
 
-            // ----- ВОССТАНОВЛЕНИЕ ЗАДАЧИ -----
             function restoreTask() {
                 const savedTaskId = getSavedTaskId();
                 if (!savedTaskId) return false;
@@ -1042,6 +1011,14 @@
                 if (loadBdu && !bduFile) {
                     alert('Выбран файл BDU, но он не определен. Пожалуйста, выберите файл BDU.');
                     return;
+                }
+
+                for (let i = 0; i < selectedFiles.length; i++) {
+                    const fileType = detectFileType(selectedFiles[i].name);
+                    if (fileType === 'other') {
+                        alert('Скачивание невозможно. Обнаружены недопустимые файлы.');
+                        return;
+                    }
                 }
                 
                 resultDiv.classList.add('show');
@@ -1114,7 +1091,6 @@
                 }
             }
 
-            // ----- ВЫЗОВ API ДЛЯ КОНФИГУРАЦИИ -----
             async function callAPI(method, endpoint, resultId) {
                 const resultDiv = document.getElementById(resultId);
                 const pre = resultDiv.querySelector('pre');
@@ -1163,12 +1139,9 @@
                     const response = await fetch('/config');
                     const data = await response.json();
                     if (data.status && data.config) {
-                        if (data.config.filename_cve) {
-                            document.getElementById('cveFileName').textContent = data.config.filename_cve;
-                        }
-                        if (data.config.filename_bdu) {
-                            document.getElementById('bduFileName').textContent = data.config.filename_bdu;
-                        }
+                        // Не устанавливаем имена файлов при загрузке страницы
+                        // Оставляем "Не выбран" по умолчанию
+                        console.log('Config loaded:', data.config);
                     }
                 } catch (error) {
                     console.error('Error loading config:', error);
@@ -1177,6 +1150,12 @@
 
             document.addEventListener('DOMContentLoaded', function() {
                 console.log('Page loaded - GET request');
+                
+                // Сбрасываем состояние файлов при загрузке страницы
+                selectedFiles = [];
+                cveFile = null;
+                bduFile = null;
+                updateFileList();
                 
                 const restored = restoreTask();
                 
