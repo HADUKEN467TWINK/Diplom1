@@ -644,19 +644,6 @@ async def home():
                                 <div id="result1" class="result-container"><pre></pre></div>
                             </div>
                         </div>
-                        
-                        <div class="card">
-                            <div class="card-header">
-                                <h2>Конфигурация</h2>
-                            </div>
-                            <div class="card-body">
-                                <p>Просмотр текущей конфигурации из Redis</p>
-                                <button class="btn btn-get" onclick="callAPI('GET', '/config', 'result2')">
-                                    Показать конфигурацию
-                                </button>
-                                <div id="result2" class="result-container"><pre></pre></div>
-                            </div>
-                        </div>
                     </div>
                     
                     <div class="progress-wrapper" id="progressWrapper">
@@ -1598,15 +1585,4 @@ async def get_task_status(task_id: str):
         "progress": task.get("progress", 0),
         "message": task.get("message", ""),
         "result": task.get("result") if task["status"] in ["completed", "failed"] else None
-    }
-
-@router.get("/config", summary="Получить текущую конфигурацию", tags=["CVE"])
-async def get_current_config():
-    """
-    Получить текущую конфигурацию из Redis
-    """
-    config = await get_config_from_redis()
-    return {
-        "status": True,
-        "config": config
     }
