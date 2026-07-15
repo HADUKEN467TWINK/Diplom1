@@ -46,6 +46,21 @@
             color: #2563eb;
             font-size: 28px;
         }
+        .header .switch-link {
+            font-size: 16px;
+            font-weight: 400;
+            margin-left: 20px;
+        }
+        .header .switch-link a {
+            color: #2563eb;
+            text-decoration: none;
+            border-bottom: 1px dashed #2563eb;
+            transition: 0.15s;
+        }
+        .header .switch-link a:hover {
+            border-bottom: 1px solid #2563eb;
+            opacity: 0.8;
+        }
         .badge {
             background: #eef2ff;
             color: #2563eb;
@@ -642,6 +657,9 @@
             <div class="header">
                 <h1>
                     <i class="fas fa-shield-alt"></i> CVE Explorer
+                    <span class="switch-link">
+                        <a href="http://localhost:8004" target="_self">BDU Explorer</a>
+                    </span>
                 </h1>
                 <div class="config-status">
                     <span class="dot green" id="statusDot"></span>
