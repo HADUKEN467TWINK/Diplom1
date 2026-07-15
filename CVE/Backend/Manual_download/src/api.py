@@ -1,6 +1,5 @@
 from fastapi import APIRouter, File, UploadFile, Form, BackgroundTasks
 from src.help_func import task_statuses, process_files
-from pydantic import BaseModel, HttpUrl
 from fastapi.responses import HTMLResponse, FileResponse
 import os
 import tempfile
@@ -9,16 +8,11 @@ import uuid
 
 router = APIRouter()
 
-class Repo_Schema(BaseModel):
-    update_url_cve: HttpUrl
-    update_url_bdu: HttpUrl
-    name_base: str
-
 @router.get("/", response_class=HTMLResponse)
 async def home():
     return FileResponse("templates/index.html")
 
-@router.post("/upload_files", summary="Загрузить файлы CVE и BDU в базу данных", tags=["CVE"])
+@router.post("/upload_files")
 async def upload_files(
     background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
@@ -27,19 +21,12 @@ async def upload_files(
     load_cve: str = Form("true"),
     load_bdu: str = Form("true")
 ):
-    """
-    Загружает выбранные файлы CVE или BDU в MongoDB в фоновом режиме.
-    """
     task_id = str(uuid.uuid4())
-    
     load_cve_bool = load_cve.lower() == "true"
     load_bdu_bool = load_bdu.lower() == "true"
     
     if not load_cve_bool and not load_bdu_bool:
-        return {
-            "status": False,
-            "message": "Не выбран ни один тип данных для загрузки"
-        }
+        return {"status": False, "message": "Не выбран ни один тип данных для загрузки"}
     
     temp_dir = tempfile.mkdtemp()
     
@@ -62,45 +49,24 @@ async def upload_files(
         
         background_tasks.add_task(
             process_files,
-            task_id,
-            saved_files,
-            cve_filename,
-            bdu_filename,
-            load_cve_bool,
-            load_bdu_bool,
-            temp_dir
+            task_id, saved_files, cve_filename, bdu_filename,
+            load_cve_bool, load_bdu_bool, temp_dir
         )
         
-        return {
-            "task_id": task_id,
-            "status": "processing",
-            "message": "Задача запущена в фоновом режиме"
-        }
+        return {"task_id": task_id, "status": "processing", "message": "Задача запущена"}
         
     except Exception as e:
         try:
             shutil.rmtree(temp_dir)
         except:
             pass
-        
-        return {
-            "status": False,
-            "message": f"Ошибка загрузки файлов: {str(e)}"
-        }
+        return {"status": False, "message": f"Ошибка: {str(e)}"}
 
-@router.get("/task_status/{task_id}", summary="Получить статус задачи", tags=["CVE"])
+@router.get("/task_status/{task_id}")
 async def get_task_status(task_id: str):
-    """
-    Получить статус фоновой задачи
-    """
     task = task_statuses.get(task_id)
-    
     if not task:
-        return {
-            "status": "not_found",
-            "message": "Задача не найдена"
-        }
-    
+        return {"status": "not_found", "message": "Задача не найдена"}
     return {
         "status": task["status"],
         "progress": task.get("progress", 0),
