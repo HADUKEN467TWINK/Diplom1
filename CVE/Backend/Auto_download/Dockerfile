@@ -8,6 +8,12 @@ RUN pip install fastapi uvicorn motor pydantic requests lxml redis hiredis
 
 COPY . .
 
-EXPOSE 8001
+RUN echo '#!/bin/bash\n\
+python main.py &\n\
+python main_config.py &\n\
+wait\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
-CMD ["python", "main.py"]
+EXPOSE 8001 8002
+
+CMD ["/app/start.sh"]

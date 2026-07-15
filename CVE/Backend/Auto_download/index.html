@@ -29,17 +29,64 @@
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
         }
 
-        .header h1 {
+        .header-left {
+            flex: 1;
+        }
+
+        .header-left h1 {
             color: #333;
             font-size: 2.5em;
             margin-bottom: 10px;
         }
 
-        .header p {
+        .header-left p {
             color: #666;
             font-size: 1.1em;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-settings {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 28px;
+            border-radius: 10px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            white-space: nowrap;
+        }
+
+        .btn-settings:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-settings:active {
+            transform: translateY(0);
+        }
+
+        .btn-settings svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
         }
 
         .status-badge {
@@ -198,8 +245,23 @@
         }
 
         @media (max-width: 768px) {
-            .header h1 {
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                padding: 20px;
+            }
+
+            .header-left h1 {
                 font-size: 1.8em;
+            }
+
+            .header-right {
+                justify-content: stretch;
+            }
+
+            .btn-settings {
+                width: 100%;
+                justify-content: center;
             }
 
             .grid {
@@ -216,8 +278,18 @@
     
     <div class="container">
         <div class="header">
-            <h1>CVE/BDU Скачать бесплатно</h1>
-            <p>Скачивание и обновление баз данных уязвимостей CVE и БДУ</p>
+            <div class="header-left">
+                <h1>CVE/BDU Скачать бесплатно</h1>
+                <p>Скачивание и обновление баз данных уязвимостей CVE и БДУ</p>
+            </div>
+            <div class="header-right">
+                <button class="btn-settings" onclick="window.open('http://localhost:8002', '_blank')">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M19.14 12.94a7.07 7.07 0 0 0 0-1.88l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.04 7.04 0 0 0-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84a.49.49 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.49.49 0 0 0 .12.61l2.03 1.58a7.07 7.07 0 0 0 0 1.88l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.49.37 1.03.7 1.62.94l.36 2.54c.05.24.26.41.48.41h3.84c.22 0 .43-.17.48-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32a.49.49 0 0 0-.12-.61l-2.03-1.58zM12 15.6A3.6 3.6 0 1 1 15.6 12 3.6 3.6 0 0 1 12 15.6z"/>
+                    </svg>
+                    Настройки
+                </button>
+            </div>
         </div>
 
         <div class="grid">

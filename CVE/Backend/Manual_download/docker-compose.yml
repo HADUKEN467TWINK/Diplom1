@@ -6,8 +6,6 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
-    volumes:
-      - ./__download_file__:/app/__download_file__
     networks:
       - redis-mini-storage-network
 

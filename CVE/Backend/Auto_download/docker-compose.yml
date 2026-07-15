@@ -5,6 +5,7 @@ services:
     build: .
     ports:
       - "8001:8001"
+      - "8002:8002"
     restart: unless-stopped
     volumes:
     - ./__downloading_base___:/app/__downloading_base___ 
