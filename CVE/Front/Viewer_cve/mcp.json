@@ -1,10 +1,12 @@
 {
     "mcpServers": {
-        "server-mongodb": {
-            "command": "python",
-            "args": [
-                ".\\main.py"
-            ]
+        "cve-viewer": {
+            "url": "http://localhost:8003/sse",
+            "transport": "sse"
+        },
+        "bdu-viewer": {
+            "url": "http://localhost:8004/sse",
+            "transport": "sse"
         }
     }
 }

@@ -10,6 +10,7 @@ from mcp.server.fastmcp import FastMCP
 
 app = FastAPI(title="Viewer_BDU")
 mcp = FastMCP("MCP Server BDU")
+app.mount("/mcp", mcp.sse_app())
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,6 +44,7 @@ async def startup():
 async def home():
     return FileResponse("templates/index_bdu.html")
 
+@mcp.tool()
 @app.get("/api/bdu/items")
 async def get_bdu_items(
     page: int = Query(1, ge=1),

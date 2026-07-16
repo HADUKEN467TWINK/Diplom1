@@ -11,6 +11,7 @@ from bson import ObjectId
 
 app = FastAPI(title="Viewer_CVE")
 mcp = FastMCP("MCP Server")
+app.mount("/mcp", mcp.sse_app())
 
 app.add_middleware(
     CORSMiddleware,
